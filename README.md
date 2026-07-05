@@ -22,6 +22,7 @@ Edit the `GAME` object at the top of `app.js` to replace:
 - an in-app route guide with Born-path openings and career requirements
 - four total lifepaths per character
 - sequential 300-point skill stages with preset costs and a 40-point per-skill stage cap
+- separate combat-skill reference with a reserved Combat Magic slot
 - ancestry choices with availability flags for future playtest options
 - 25 standard and 25 professional skills
 - 300 skill points per lifepath with tiered advancement costs

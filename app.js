@@ -39,17 +39,23 @@ const GAME = {
   standardSkills: [
     { id: "athletics", name: "Athletics" }, { id: "brawn", name: "Brawn" },
     { id: "conceal", name: "Conceal" }, { id: "deceive", name: "Deceive" },
-    { id: "drive", name: "Drive" }, { id: "endurance", name: "Endurance" },
-    { id: "evade", name: "Evade" }, { id: "first-aid", name: "First Aid" },
+    { id: "drive", name: "Drive" }, { id: "first-aid", name: "First Aid" },
     { id: "influence", name: "Influence" }, { id: "insight", name: "Insight" },
     { id: "intimidate", name: "Intimidate" }, { id: "language", name: "Language" },
-    { id: "local-knowledge", name: "Local Knowledge" }, { id: "melee", name: "Melee" },
+    { id: "local-knowledge", name: "Local Knowledge" },
     { id: "navigate", name: "Navigate" }, { id: "perception", name: "Perception" },
-    { id: "ranged", name: "Ranged" }, { id: "ride", name: "Ride" },
+    { id: "ride", name: "Ride" },
     { id: "sing", name: "Sing" }, { id: "sleight", name: "Sleight of Hand" },
     { id: "stealth", name: "Stealth" }, { id: "survival", name: "Survival" },
-    { id: "swim", name: "Swim" }, { id: "willpower", name: "Willpower" },
-    { id: "customs", name: "Customs" }
+    { id: "swim", name: "Swim" }, { id: "customs", name: "Customs" }
+  ],
+  combatSkills: [
+    { id: "endurance", name: "Endurance", available: true },
+    { id: "evade", name: "Evade", available: true },
+    { id: "willpower", name: "Willpower", available: true },
+    { id: "melee", name: "Melee", available: true },
+    { id: "ranged", name: "Ranged", available: true },
+    { id: "combat-magic", name: "Combat Magic", available: false, future: true }
   ],
   professionalSkills: [
     { id: "alchemy", name: "Alchemy" }, { id: "animal-training", name: "Animal Training" },
@@ -205,9 +211,17 @@ function unlockedProfessionalSkillIds() {
   return [...new Set(character.lifepaths.flatMap(id => GAME.professionalUnlocks[id] || []))];
 }
 
+function activeCombatSkills() {
+  return GAME.combatSkills.filter(skill => skill.available);
+}
+
+function allSkillDefinitions() {
+  return [...GAME.standardSkills, ...GAME.combatSkills, ...GAME.professionalSkills];
+}
+
 function availableSkills() {
   const unlocked = unlockedProfessionalSkillIds();
-  return [...GAME.standardSkills, ...GAME.professionalSkills.filter(skill => unlocked.includes(skill.id))];
+  return [...GAME.standardSkills, ...activeCombatSkills(), ...GAME.professionalSkills.filter(skill => unlocked.includes(skill.id))];
 }
 
 function costToRaiseSkill(value, start = 20) {
@@ -227,11 +241,11 @@ function lifepathSkillPackage(lifepathId) {
 
 function availableSkillsAtStage(stageIndex) {
   const unlocked = new Set(character.lifepaths.slice(0, stageIndex + 1).flatMap(id => GAME.professionalUnlocks[id] || []));
-  return [...GAME.standardSkills, ...GAME.professionalSkills.filter(skill => unlocked.has(skill.id))];
+  return [...GAME.standardSkills, ...activeCombatSkills(), ...GAME.professionalSkills.filter(skill => unlocked.has(skill.id))];
 }
 
 function trainingState() {
-  const allSkills = [...GAME.standardSkills, ...GAME.professionalSkills];
+  const allSkills = allSkillDefinitions();
   const ratings = Object.fromEntries(allSkills.map(skill => [skill.id, 20]));
   const totalPresetBoosts = Object.fromEntries(allSkills.map(skill => [skill.id, 0]));
   const stages = character.lifepaths.map((id, index) => {
@@ -542,6 +556,7 @@ function renderSkills() {
       <strong>${stage.remaining} / ${GAME.skillPointsPerLifepath} remaining</strong>
     </div>
     ${renderPresetTraining(stage)}
+    ${renderCombatSkillGroup(stage)}
     ${renderSkillGroup("Standard skills", GAME.standardSkills, stage)}
     ${renderSkillGroup(`Professional skills · ${professional.length} available`, professional, stage, professional.length ? "" : "This stage has no professional skills unlocked.")}`;
 }
@@ -558,7 +573,16 @@ function renderPresetTraining(stage) {
 }
 
 function skillName(id) {
-  return findById([...GAME.standardSkills, ...GAME.professionalSkills], id)?.name || id;
+  return findById(allSkillDefinitions(), id)?.name || id;
+}
+
+function renderCombatSkillGroup(stage) {
+  const future = GAME.combatSkills.filter(skill => !skill.available);
+  return `<section class="skill-section combat-skill-section"><div class="path-heading"><span>Combat skills</span><small>Quick reference</small></div>
+    <div class="skill-grid">${activeCombatSkills().map(skill => renderSkillRow(skill, stage)).join("")}
+      ${future.map(skill => `<div class="skill-row future-skill"><div><strong>${skill.name}</strong><small>Reserved for future magical lifepaths</small></div><span>Locked</span></div>`).join("")}
+    </div>
+  </section>`;
 }
 
 function renderSkillGroup(title, skills, stage, emptyMessage = "") {
@@ -631,6 +655,7 @@ function renderReview() {
           const path = getLifepath(stage.id, stage.index);
           return `<span><strong>${path?.name || stage.id}</strong> ${stage.presetCost} preset + ${stage.freeCost} invested · ${stage.remaining} left</span>`;
         }).join("")}</div>
+        ${renderReviewSkillGroup("Combat skills", GAME.combatSkills)}
         ${renderReviewSkillGroup("Standard skills", GAME.standardSkills)}
         ${renderReviewSkillGroup("Professional skills", unlockedProfessional)}
       </section>
@@ -642,6 +667,7 @@ function renderReviewSkillGroup(title, skills) {
     <h4>${title}</h4>
     <div class="review-skill-list">${skills.length
       ? skills.map(skill => {
+          if (skill.available === false) return `<span class="locked-skill"><i>${skill.name}</i><strong>Locked</strong></span>`;
           const value = skillValue(skill.id);
           return `<span class="${value > 20 ? "trained" : ""}"><i>${skill.name}</i><strong>${value}</strong></span>`;
         }).join("")

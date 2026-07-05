@@ -180,6 +180,9 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .skill-row > div:first-child { min-width: 0; }
 .skill-row > div:first-child strong { display: block; overflow: hidden; font: 600 14px "Newsreader",serif; text-overflow: ellipsis; white-space: nowrap; }
 .skill-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
+.combat-skill-section { padding: 16px; border: 1px solid #b9a47f; border-radius: 9px; background: #faf5e9; }
+.future-skill { opacity: .48; border-style: dashed; }
+.future-skill > span { color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
 .skill-controls { display: flex; align-items: center; gap: 3px; }
 .skill-controls button {
   min-width: 25px; height: 25px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px;
@@ -209,6 +212,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   color: var(--muted); border-bottom: 1px dotted var(--line);
 }
 .review-skill-list span.trained { color: var(--ink); font-weight: 600; }
+.review-skill-list span.locked-skill { opacity: .5; font-style: italic; }
 .review-skill-list i { overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .review-skill-list strong { font: 600 13px "Newsreader", serif; }
 .review-skill-list em { color: var(--muted); font-size: 10px; }

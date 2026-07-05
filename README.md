@@ -18,7 +18,8 @@ Then visit `http://localhost:8000`.
 
 Edit the `GAME` object at the top of `app.js` to replace:
 
-- born/origin lifepaths and branching later lifepaths (`requires` and `grants` tags)
+- born/origin lifepaths and explicit branching career prerequisites
+- an in-app route guide with Born-path openings and career requirements
 - ancestry choices with availability flags for future playtest options
 - 25 standard and 25 professional skills
 - 300 skill points per lifepath with tiered advancement costs

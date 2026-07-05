@@ -44,12 +44,22 @@ const GAME = {
     "born-city": ["commerce", "tradecraft"], "born-highlands": ["scouting", "animal-training"],
     "born-forest": ["hunting", "scouting"], "born-nomad": ["animal-training", "commerce"],
     "born-noble": ["heraldry", "oratory"], "born-sea": ["navigation-sea", "commerce"],
-    "apprentice": ["craft", "artifice"], "herder": ["animal-training", "farming"],
+    "farmhand": ["farming", "animal-training"], "herder": ["animal-training", "farming"],
+    "apprentice": ["craft", "artifice"], "workshop-hand": ["craft", "engineering"],
     "scribe": ["scholarship", "bureaucracy"], "page": ["heraldry", "leadership"],
-    "peddler": ["commerce", "navigation-sea"], "hunter": ["hunting", "scouting"],
-    "journeyman": ["craft", "engineering"], "guard": ["law", "warfare"],
-    "courtier": ["oratory", "bureaucracy"], "scholar": ["lore", "scholarship"],
-    "veteran": ["command", "warfare"], "guildmaster": ["leadership", "commerce"]
+    "peddler": ["commerce", "tradecraft"], "hunter": ["hunting", "scouting"],
+    "guide": ["scouting", "lore"], "deckhand": ["navigation-sea", "tradecraft"],
+    "soldier": ["warfare", "law"], "healer": ["healing", "medicine"],
+    "journeyman": ["craft", "engineering"], "master-artisan": ["artifice", "engineering"],
+    "guildmaster": ["leadership", "commerce"], "merchant": ["commerce", "tradecraft"],
+    "caravan-master": ["leadership", "animal-training"], "scholar": ["lore", "scholarship"],
+    "physician": ["medicine", "healing"], "courtier": ["oratory", "bureaucracy"],
+    "steward": ["bureaucracy", "leadership"], "sergeant": ["command", "warfare"],
+    "captain": ["command", "leadership"], "guard": ["law", "warfare"],
+    "veteran": ["command", "warfare"], "scout": ["scouting", "hunting"],
+    "ranger": ["scouting", "lore"], "sailor": ["navigation-sea", "tradecraft"],
+    "navigator": ["navigation-sea", "scholarship"], "shipmaster": ["command", "navigation-sea"],
+    "outlaw": ["tradecraft", "scouting"]
   },
   bornLifepaths: [
     { id: "born-peasant", name: "Peasant", description: "Born to the fields, livestock, and the unrelenting rhythm of the seasons.", benefit: "Salt of the earth", grants: ["folk", "wild"] },
@@ -62,18 +72,40 @@ const GAME = {
     { id: "born-sea", name: "Seaborn", description: "Raised by tides, working decks, and horizons that promised distant shores.", benefit: "Sea legs", grants: ["trade", "road"] }
   ],
   lifepaths: [
-    { id: "apprentice", name: "Apprentice", description: "You learned a patient trade beneath a demanding master.", benefit: "Practised hands", requires: ["craft", "urban"], grants: ["craft", "trade"] },
-    { id: "herder", name: "Herder", description: "You guarded stubborn animals across lonely country.", benefit: "Animal-wise", requires: ["folk", "wild"], grants: ["folk", "wild"] },
-    { id: "scribe", name: "Scribe", description: "You copied records, letters, and ideas that were not meant for you.", benefit: "Letters and lore", requires: ["learned", "urban"], grants: ["learned", "court"] },
-    { id: "page", name: "Household Page", description: "You served at table and learned how power behaves when it feels unwatched.", benefit: "Read the room", requires: ["court"], grants: ["court", "martial"] },
-    { id: "peddler", name: "Road Peddler", description: "You carried useful things and better stories between settlements.", benefit: "A contact everywhere", requires: ["trade", "folk"], grants: ["trade", "road"] },
-    { id: "hunter", name: "Hunter", description: "You learned patience, clean tracks, and the terrible intimacy of hunger.", benefit: "Keen pursuit", requires: ["wild"], grants: ["wild", "martial"] },
-    { id: "journeyman", name: "Journeyman", description: "Your craft took you onto the road in search of mastery.", benefit: "Guild standing", requires: ["craft"], grants: ["craft", "road"] },
-    { id: "guard", name: "Watch Guard", description: "You kept uneasy peace with a stout coat and a sharper eye.", benefit: "Hold the line", requires: ["urban", "martial"], grants: ["martial", "urban"] },
-    { id: "courtier", name: "Courtier", description: "You made a profession of favors, appearances, and carefully chosen words.", benefit: "Silver tongue", requires: ["court"], grants: ["court", "trade"] },
-    { id: "scholar", name: "Itinerant Scholar", description: "You pursued answers through archives, ruins, and dangerous conversations.", benefit: "Ancient lore", requires: ["learned", "road"], grants: ["learned", "road"] },
-    { id: "veteran", name: "Company Veteran", description: "You survived a campaign and carry its habits into quieter places.", benefit: "Battle-hardened", requires: ["martial", "road"], grants: ["martial", "command"] },
-    { id: "guildmaster", name: "Guildmaster", description: "You became responsible for a craft, its people, and its compromises.", benefit: "Call in a favor", requires: ["craft", "trade"], grants: ["trade", "command"] }
+    { id: "farmhand", name: "Farmhand", description: "You labored through sowing, harvest, and the care of working animals.", benefit: "Seasoned laborer", starts: ["born-peasant", "born-villager"], anyOf: [{ allPaths: ["herder"] }], grants: ["folk", "wild"] },
+    { id: "herder", name: "Herder", description: "You guarded stubborn animals across lonely country.", benefit: "Animal-wise", starts: ["born-peasant", "born-highlands", "born-nomad"], anyOf: [{ allPaths: ["farmhand"] }], grants: ["folk", "wild"] },
+    { id: "apprentice", name: "Apprentice", description: "You learned a patient trade beneath a demanding master.", benefit: "Practised hands", starts: ["born-villager", "born-city", "born-noble"], anyOf: [{ allPaths: ["workshop-hand"] }], grants: ["craft"] },
+    { id: "workshop-hand", name: "Workshop Hand", description: "You earned your keep through repetition, sweat, and practical craft.", benefit: "Real experience", starts: ["born-peasant", "born-villager", "born-city"], anyOf: [{ anyPaths: ["farmhand", "apprentice", "peddler"] }], grants: ["craft"] },
+    { id: "scribe", name: "Scribe", description: "You copied records, letters, and ideas that were not meant for you.", benefit: "Letters and lore", starts: ["born-city", "born-noble"], anyOf: [{ anyPaths: ["page", "apprentice", "healer"] }], grants: ["learned", "court"] },
+    { id: "page", name: "Household Page", description: "You served at table and learned how power behaves when it feels unwatched.", benefit: "Read the room", starts: ["born-noble"], anyOf: [{ allPaths: ["scribe"] }], grants: ["court", "martial"] },
+    { id: "peddler", name: "Road Peddler", description: "You carried useful things and better stories between settlements.", benefit: "A contact everywhere", starts: ["born-villager", "born-city", "born-nomad", "born-sea"], anyOf: [{ anyPaths: ["farmhand", "herder", "workshop-hand", "deckhand"] }], grants: ["trade", "road"] },
+    { id: "hunter", name: "Hunter", description: "You learned patience, clean tracks, and the terrible intimacy of hunger.", benefit: "Keen pursuit", starts: ["born-peasant", "born-highlands", "born-forest", "born-nomad"], anyOf: [{ anyPaths: ["farmhand", "herder", "guide"] }], grants: ["wild", "martial"] },
+    { id: "guide", name: "Wilderness Guide", description: "You led others through country that punishes the unprepared.", benefit: "Find the way", starts: ["born-highlands", "born-forest", "born-nomad"], anyOf: [{ anyPaths: ["herder", "hunter", "peddler"] }], grants: ["wild", "road"] },
+    { id: "deckhand", name: "Deckhand", description: "You learned ropes, watches, storms, and obedience aboard ship.", benefit: "Weather the deck", starts: ["born-sea", "born-city"], anyOf: [{ allPaths: ["peddler"] }], grants: ["trade", "road"] },
+    { id: "soldier", name: "Soldier", description: "You drilled, marched, and stood in a battle line when running looked wiser.", benefit: "Hold formation", starts: ["born-peasant", "born-city", "born-highlands", "born-noble"], anyOf: [{ anyPaths: ["farmhand", "herder", "page"] }], grants: ["martial"] },
+    { id: "healer", name: "Healer", description: "You learned to set bones, tend fevers, and offer comfort without promises.", benefit: "Tend the wounded", starts: ["born-villager", "born-forest", "born-noble"], anyOf: [{ anyPaths: ["farmhand", "herder", "hunter"] }], grants: ["learned", "folk"] },
+
+    { id: "journeyman", name: "Journeyman", description: "Your craft took you onto the road in search of mastery.", benefit: "Guild standing", anyOf: [{ allPaths: ["apprentice"] }, { allPaths: ["workshop-hand"], minChapters: 2 }], grants: ["craft", "road"] },
+    { id: "master-artisan", name: "Master Artisan", description: "Your work became the standard against which others were judged.", benefit: "Masterwork", anyOf: [{ allPaths: ["journeyman"] }], grants: ["craft", "command"] },
+    { id: "guildmaster", name: "Guildmaster", description: "You became responsible for a craft, its people, and its compromises.", benefit: "Call in a favor", anyOf: [{ allPaths: ["master-artisan"] }, { allPaths: ["journeyman", "merchant"] }], grants: ["trade", "command"] },
+    { id: "merchant", name: "Merchant", description: "You turned routes, risks, and relationships into a livelihood.", benefit: "Judge the market", anyOf: [{ anyPaths: ["peddler", "deckhand"] }], grants: ["trade", "court"] },
+    { id: "caravan-master", name: "Caravan Master", description: "You kept people, beasts, and valuable cargo moving through danger.", benefit: "Keep them moving", anyOf: [{ allPaths: ["merchant"] }, { allPaths: ["peddler"], minChapters: 2 }], grants: ["trade", "command"] },
+    { id: "scholar", name: "Scholar", description: "You pursued answers through archives and dangerous conversations.", benefit: "Ancient lore", anyOf: [{ allPaths: ["scribe"] }], grants: ["learned"] },
+    { id: "physician", name: "Physician", description: "Study and long practice taught you to treat what simpler remedies cannot.", benefit: "Clinical eye", anyOf: [{ allPaths: ["healer"], anyPaths: ["scribe", "scholar"] }], grants: ["learned", "command"] },
+    { id: "courtier", name: "Courtier", description: "You made a profession of favors, appearances, and carefully chosen words.", benefit: "Silver tongue", anyOf: [{ anyPaths: ["page", "scribe"] }], grants: ["court", "trade"] },
+    { id: "steward", name: "Steward", description: "You managed a household's stores, servants, accounts, and secrets.", benefit: "Order the house", anyOf: [{ anyPaths: ["page", "scribe"], minChapters: 2 }], grants: ["court", "command"] },
+
+    { id: "sergeant", name: "Sergeant", description: "Experience put other soldiers under your voice and responsibility.", benefit: "Rally the line", anyOf: [{ allPaths: ["soldier"] }], grants: ["martial", "command"] },
+    { id: "captain", name: "Captain", description: "You planned campaigns and carried the consequences of command.", benefit: "Commanding presence", anyOf: [{ allPaths: ["sergeant"] }], grants: ["martial", "command"] },
+    { id: "guard", name: "Watch Guard", description: "You kept uneasy peace with a stout coat and a sharper eye.", benefit: "Hold the line", anyOf: [{ allPaths: ["soldier"] }], grants: ["martial", "urban"] },
+    { id: "veteran", name: "Company Veteran", description: "You survived long enough for warfare to become a permanent habit.", benefit: "Battle-hardened", anyOf: [{ allPaths: ["soldier"], minChapters: 2 }], grants: ["martial", "road"] },
+    { id: "scout", name: "Scout", description: "You learned to move ahead of danger and return with useful truth.", benefit: "Eyes forward", anyOf: [{ anyPaths: ["hunter", "guide", "soldier"] }], grants: ["wild", "martial"] },
+    { id: "ranger", name: "Ranger", description: "You became a trusted guardian of roads, borders, and wild places.", benefit: "Warden of the wild", anyOf: [{ allPaths: ["scout"], anyPaths: ["hunter", "guide"] }], grants: ["wild", "command"] },
+
+    { id: "sailor", name: "Sailor", description: "Years at sea made you a trusted hand rather than merely a deck laborer.", benefit: "Able seafarer", anyOf: [{ allPaths: ["deckhand"] }], grants: ["trade", "road"] },
+    { id: "navigator", name: "Navigator", description: "You learned to read charts, skies, currents, and uncertain coastlines.", benefit: "Chart a course", anyOf: [{ allPaths: ["sailor"] }], grants: ["learned", "road"] },
+    { id: "shipmaster", name: "Shipmaster", description: "A vessel, crew, cargo, and every life aboard became your charge.", benefit: "Master and commander", anyOf: [{ allPaths: ["navigator", "sailor"] }], grants: ["trade", "command"] },
+    { id: "outlaw", name: "Outlaw", description: "Whether by sentence or necessity, you learned to live beyond protection.", benefit: "Beyond the law", anyOf: [{ anyPaths: ["peddler", "soldier", "hunter"], minChapters: 2 }], grants: ["road", "wild"] }
   ],
   features: [
     { id: "iron-grip", name: "Iron Grip", cost: 2, description: "Once per scene, hold fast against an overwhelming physical force." },
@@ -103,6 +135,7 @@ const freshCharacter = () => ({
 let character = loadCharacter();
 let currentStep = 0;
 let activeLifepathSlot = Math.min(character.lifepaths.length, 4);
+let showLifepathGuide = false;
 
 const el = id => document.getElementById(id);
 const findById = (list, id) => list.find(item => item.id === id);
@@ -114,8 +147,13 @@ function loadCharacter() {
     if (!saved) return freshCharacter();
     let migratedPaths = Array.isArray(saved.lifepaths) ? saved.lifepaths.slice(0, 5) : [];
     if (migratedPaths[0] && !GAME.bornLifepaths.some(path => path.id === migratedPaths[0])) migratedPaths = [];
-    const firstInvalidLaterPath = migratedPaths.slice(1).findIndex(id => !GAME.lifepaths.some(path => path.id === id));
-    if (firstInvalidLaterPath >= 0) migratedPaths = migratedPaths.slice(0, firstInvalidLaterPath + 1);
+    for (let index = 1; index < migratedPaths.length; index++) {
+      const path = GAME.lifepaths.find(candidate => candidate.id === migratedPaths[index]);
+      if (!path || !pathIsAvailable(path, migratedPaths.slice(0, index))) {
+        migratedPaths = migratedPaths.slice(0, index);
+        break;
+      }
+    }
     return {
       ...freshCharacter(), ...saved, lifepaths: migratedPaths,
       skills: { ...freshCharacter().skills, ...saved.skills }
@@ -266,7 +304,12 @@ function renderLifepath() {
   const isBorn = activeLifepathSlot === 0;
   const options = isBorn ? GAME.bornLifepaths : availableLifepaths(activeLifepathSlot);
   const selectedId = character.lifepaths[activeLifepathSlot];
-  return heading("A life before adventure", "Trace the road behind you.", "Choose where you were born, then follow four connected chapters. Each path opens new roads through the experiences it grants.") + `
+  return heading("A life before adventure", "Trace the road behind you.", "Choose where you were born, then follow four connected chapters. Each career requires a credible route through your earlier experience.") + `
+    <div class="guide-toggle-row">
+      <p>Exact roles and accumulated experience unlock later careers.</p>
+      <button class="button ghost" data-guide-toggle>${showLifepathGuide ? "Hide lifepath guide" : "Open lifepath guide"}</button>
+    </div>
+    ${showLifepathGuide ? renderLifepathGuide() : ""}
     <div class="lifepath-timeline">${Array.from({ length: 5 }, (_, index) => {
       const path = getLifepath(character.lifepaths[index], index);
       const locked = index > character.lifepaths.length;
@@ -280,6 +323,7 @@ function renderLifepath() {
       <button class="choice-card ${selectedId === item.id ? "selected" : ""}" data-lifepath-choice="${item.id}">
         <h3>${item.name}</h3><p>${item.description}</p><span class="tag">${item.benefit}</span>
         <small class="unlock-note">Unlocks ${professionalSkillNames(item.id)}</small>
+        ${!isBorn ? `<small class="prereq-note">Requires: ${prerequisiteText(item)}</small>` : ""}
       </button>`).join("")}</div>`;
 }
 
@@ -293,9 +337,74 @@ function getLifepath(id, slot) {
 }
 
 function availableLifepaths(slot) {
-  const history = character.lifepaths.slice(0, slot)
-    .flatMap((id, index) => getLifepath(id, index)?.grants || []);
-  return GAME.lifepaths.filter(path => path.requires.some(tag => history.includes(tag)));
+  return availablePathsForHistory(character.lifepaths.slice(0, slot));
+}
+
+function availablePathsForHistory(history) {
+  return GAME.lifepaths.filter(path => !history.includes(path.id) && pathIsAvailable(path, history));
+}
+
+function pathIsAvailable(path, history) {
+  if (!history.length) return false;
+  if (history.length === 1) return (path.starts || []).includes(history[0]);
+  if (!path.anyOf?.length) return false;
+  const careerHistory = history.slice(1);
+  return path.anyOf.some(rule => {
+    const enoughExperience = careerHistory.length >= (rule.minChapters || 0);
+    const hasAll = (rule.allPaths || []).every(id => careerHistory.includes(id));
+    const hasAny = !(rule.anyPaths || []).length || rule.anyPaths.some(id => careerHistory.includes(id));
+    return enoughExperience && hasAll && hasAny;
+  });
+}
+
+function pathName(id) {
+  return findById(GAME.lifepaths, id)?.name || id;
+}
+
+function prerequisiteText(path) {
+  const routes = [];
+  if (path.starts?.length) routes.push(`${path.starts.map(id => findById(GAME.bornLifepaths, id)?.name).filter(Boolean).join(", ")} born`);
+  routes.push(...(path.anyOf || []).map(rule => {
+    const parts = [];
+    if (rule.allPaths?.length) parts.push(rule.allPaths.map(pathName).join(" + "));
+    if (rule.anyPaths?.length) parts.push(`one of ${rule.anyPaths.map(pathName).join(", ")}`);
+    if (rule.minChapters) parts.push(`${rule.minChapters}+ prior career paths`);
+    return parts.join(" and ");
+  }));
+  return routes.join(" OR ");
+}
+
+function reachablePathsFromBorn(bornId) {
+  const reached = new Set();
+  let routes = [[bornId]];
+  for (let chapter = 1; chapter <= 4; chapter++) {
+    const nextRoutes = [];
+    routes.forEach(history => availablePathsForHistory(history).forEach(path => {
+      reached.add(path.id);
+      nextRoutes.push([...history, path.id]);
+    }));
+    routes = nextRoutes;
+  }
+  return GAME.lifepaths.filter(path => reached.has(path.id));
+}
+
+function renderLifepathGuide() {
+  return `<section class="lifepath-guide">
+    <div class="guide-intro"><span class="step-kicker">Route atlas</span><h2>Lifepath guide</h2><p>Born paths determine your first careers. Every later role checks the paths already in your history.</p></div>
+    <div class="born-route-grid">${GAME.bornLifepaths.map(born => {
+      const first = availablePathsForHistory([born.id]);
+      const reachable = reachablePathsFromBorn(born.id);
+      return `<article class="born-route">
+        <h3>${born.name}</h3>
+        <p><strong>First paths:</strong> ${first.map(path => path.name).join(", ") || "None"}</p>
+        <p><strong>Reachable careers:</strong> ${reachable.map(path => path.name).join(", ") || "None"}</p>
+      </article>`;
+    }).join("")}</div>
+    <div class="prerequisite-index">
+      <h3>Career prerequisites</h3>
+      ${GAME.lifepaths.map(path => `<div><strong>${path.name}</strong><span>${prerequisiteText(path)}</span></div>`).join("")}
+    </div>
+  </section>`;
 }
 
 function renderSkills() {
@@ -393,6 +502,9 @@ function renderReviewSkillGroup(title, skills) {
 }
 
 function bindStepEvents() {
+  document.querySelectorAll("[data-guide-toggle]").forEach(button => button.addEventListener("click", () => {
+    showLifepathGuide = !showLifepathGuide; render();
+  }));
   document.querySelectorAll("[data-field]").forEach(input => input.addEventListener("input", event => {
     character[event.target.dataset.field] = event.target.value; saveCharacter();
   }));

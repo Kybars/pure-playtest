@@ -106,7 +106,32 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .choice-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .choice-card .tag { display: inline-block; margin-top: 11px; color: var(--rust); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .unlock-note { display: block; margin-top: 6px; color: var(--sage); font-size: 9px; font-weight: 700; }
+.prereq-note { display: block; margin-top: 7px; color: var(--muted); font-size: 9px; line-height: 1.4; }
 .choice-card .cost { position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 700; }
+.guide-toggle-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  margin: -17px 0 24px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(255,255,255,.4);
+}
+.guide-toggle-row p { margin: 0; color: var(--muted); font-size: 11px; }
+.lifepath-guide {
+  margin: 0 0 28px; padding: 24px; border: 1px solid var(--line); border-radius: 10px;
+  background: #f7f2e9; box-shadow: var(--shadow);
+}
+.guide-intro h2 { margin: 4px 0 4px; font: 600 28px "Newsreader", serif; }
+.guide-intro p { margin: 0 0 18px; color: var(--muted); font-size: 11px; }
+.born-route-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.born-route { padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.6); }
+.born-route h3 { margin: 0 0 6px; font: 600 16px "Newsreader", serif; }
+.born-route p { margin: 4px 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.born-route strong { color: var(--ink); }
+.prerequisite-index { margin-top: 22px; }
+.prerequisite-index > h3 { margin: 0 0 9px; font: 600 20px "Newsreader", serif; }
+.prerequisite-index > div {
+  display: grid; grid-template-columns: 135px 1fr; gap: 12px; padding: 7px 3px;
+  border-top: 1px solid var(--line); font-size: 10px;
+}
+.prerequisite-index span { color: var(--muted); line-height: 1.4; }
 .lifepath-timeline {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin: -14px 0 24px;
 }
@@ -244,6 +269,9 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   .skill-grid { grid-template-columns: 1fr; }
   .review-skill-list { grid-template-columns: repeat(2, 1fr); }
   .lifepath-timeline { grid-template-columns: 1fr; }
+  .guide-toggle-row { align-items: stretch; flex-direction: column; }
+  .born-route-grid { grid-template-columns: 1fr; }
+  .prerequisite-index > div { grid-template-columns: 1fr; gap: 2px; }
   .lifepath-slot { display: grid; grid-template-columns: 70px 1fr; align-items: center; }
   .lifepath-slot strong { margin: 0; }
 }

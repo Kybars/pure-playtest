@@ -20,6 +20,8 @@ Edit the `GAME` object at the top of `app.js` to replace:
 
 - born/origin lifepaths and explicit branching career prerequisites
 - an in-app route guide with Born-path openings and career requirements
+- four total lifepaths per character
+- ten predefined skill advances per lifepath plus a capped free-training pool
 - ancestry choices with availability flags for future playtest options
 - 25 standard and 25 professional skills
 - 300 skill points per lifepath with tiered advancement costs

@@ -9,6 +9,33 @@ const GAME = {
     { id: "orc", name: "Orc", available: false, description: "Fierce survivors whose strength is forged through hardship.", benefit: "Coming later" }
   ],
   skillPointsPerLifepath: 300,
+  freePointsPerLifepath: 40,
+  presetBoostPattern: [11, 11, 9, 9, 7, 7, 5, 5, 3, 3],
+  skillProfiles: {
+    rural: ["athletics", "brawn", "endurance", "first-aid", "local-knowledge", "ride", "survival", "willpower"],
+    urban: ["deceive", "drive", "influence", "insight", "intimidate", "local-knowledge", "perception", "sleight"],
+    noble: ["customs", "deceive", "influence", "insight", "language", "perception", "ride", "willpower"],
+    wild: ["athletics", "conceal", "endurance", "navigate", "perception", "ranged", "stealth", "survival"],
+    road: ["athletics", "drive", "insight", "local-knowledge", "navigate", "perception", "ride", "survival"],
+    sea: ["athletics", "brawn", "customs", "endurance", "navigate", "perception", "swim", "willpower"],
+    craft: ["brawn", "conceal", "customs", "endurance", "insight", "perception", "sleight", "willpower"],
+    learned: ["customs", "first-aid", "influence", "insight", "language", "local-knowledge", "perception", "willpower"],
+    military: ["athletics", "brawn", "endurance", "intimidate", "melee", "perception", "ranged", "willpower"],
+    healing: ["endurance", "first-aid", "influence", "insight", "language", "local-knowledge", "perception", "willpower"],
+    court: ["customs", "deceive", "influence", "insight", "intimidate", "language", "perception", "willpower"],
+    trade: ["customs", "deceive", "drive", "influence", "insight", "local-knowledge", "navigate", "perception"]
+  },
+  lifepathProfiles: {
+    "born-peasant": "rural", "born-villager": "rural", "born-city": "urban", "born-highlands": "wild",
+    "born-forest": "wild", "born-nomad": "road", "born-noble": "noble", "born-sea": "sea",
+    farmhand: "rural", herder: "rural", apprentice: "craft", "workshop-hand": "craft",
+    scribe: "learned", page: "court", peddler: "trade", hunter: "wild", guide: "wild",
+    deckhand: "sea", soldier: "military", healer: "healing", journeyman: "craft",
+    "master-artisan": "craft", guildmaster: "trade", merchant: "trade", "caravan-master": "road",
+    scholar: "learned", physician: "healing", courtier: "court", steward: "court",
+    sergeant: "military", captain: "military", guard: "military", veteran: "military",
+    scout: "wild", ranger: "wild", sailor: "sea", navigator: "sea", shipmaster: "sea", outlaw: "road"
+  },
   standardSkills: [
     { id: "athletics", name: "Athletics" }, { id: "brawn", name: "Brawn" },
     { id: "conceal", name: "Conceal" }, { id: "deceive", name: "Deceive" },
@@ -87,7 +114,7 @@ const GAME = {
 
     { id: "journeyman", name: "Journeyman", description: "Your craft took you onto the road in search of mastery.", benefit: "Guild standing", anyOf: [{ allPaths: ["apprentice"] }, { allPaths: ["workshop-hand"], minChapters: 2 }], grants: ["craft", "road"] },
     { id: "master-artisan", name: "Master Artisan", description: "Your work became the standard against which others were judged.", benefit: "Masterwork", anyOf: [{ allPaths: ["journeyman"] }], grants: ["craft", "command"] },
-    { id: "guildmaster", name: "Guildmaster", description: "You became responsible for a craft, its people, and its compromises.", benefit: "Call in a favor", anyOf: [{ allPaths: ["master-artisan"] }, { allPaths: ["journeyman", "merchant"] }], grants: ["trade", "command"] },
+    { id: "guildmaster", name: "Guildmaster", description: "You became responsible for a craft, its people, and its compromises.", benefit: "Call in a favor", anyOf: [{ allPaths: ["journeyman"], minChapters: 2 }], grants: ["trade", "command"] },
     { id: "merchant", name: "Merchant", description: "You turned routes, risks, and relationships into a livelihood.", benefit: "Judge the market", anyOf: [{ anyPaths: ["peddler", "deckhand"] }], grants: ["trade", "court"] },
     { id: "caravan-master", name: "Caravan Master", description: "You kept people, beasts, and valuable cargo moving through danger.", benefit: "Keep them moving", anyOf: [{ allPaths: ["merchant"] }, { allPaths: ["peddler"], minChapters: 2 }], grants: ["trade", "command"] },
     { id: "scholar", name: "Scholar", description: "You pursued answers through archives and dangerous conversations.", benefit: "Ancient lore", anyOf: [{ allPaths: ["scribe"] }], grants: ["learned"] },
@@ -104,7 +131,7 @@ const GAME = {
 
     { id: "sailor", name: "Sailor", description: "Years at sea made you a trusted hand rather than merely a deck laborer.", benefit: "Able seafarer", anyOf: [{ allPaths: ["deckhand"] }], grants: ["trade", "road"] },
     { id: "navigator", name: "Navigator", description: "You learned to read charts, skies, currents, and uncertain coastlines.", benefit: "Chart a course", anyOf: [{ allPaths: ["sailor"] }], grants: ["learned", "road"] },
-    { id: "shipmaster", name: "Shipmaster", description: "A vessel, crew, cargo, and every life aboard became your charge.", benefit: "Master and commander", anyOf: [{ allPaths: ["navigator", "sailor"] }], grants: ["trade", "command"] },
+    { id: "shipmaster", name: "Shipmaster", description: "A vessel, crew, cargo, and every life aboard became your charge.", benefit: "Master and commander", anyOf: [{ allPaths: ["sailor"], minChapters: 2 }], grants: ["trade", "command"] },
     { id: "outlaw", name: "Outlaw", description: "Whether by sentence or necessity, you learned to live beyond protection.", benefit: "Beyond the law", anyOf: [{ anyPaths: ["peddler", "soldier", "hunter"], minChapters: 2 }], grants: ["road", "wild"] }
   ],
   features: [
@@ -128,13 +155,13 @@ const STEPS = [
 
 const freshCharacter = () => ({
   name: "", sex: "", concept: "", appearance: "", ancestry: "", lifepaths: [],
-  skills: Object.fromEntries([...GAME.standardSkills, ...GAME.professionalSkills].map(skill => [skill.id, 20])),
+  skillAdvances: Object.fromEntries([...GAME.standardSkills, ...GAME.professionalSkills].map(skill => [skill.id, 0])),
   features: [], notes: ""
 });
 
 let character = loadCharacter();
 let currentStep = 0;
-let activeLifepathSlot = Math.min(character.lifepaths.length, 4);
+let activeLifepathSlot = Math.min(character.lifepaths.length, 3);
 let showLifepathGuide = false;
 
 const el = id => document.getElementById(id);
@@ -145,7 +172,7 @@ function loadCharacter() {
   try {
     const saved = JSON.parse(localStorage.getItem("ember-and-ink-character"));
     if (!saved) return freshCharacter();
-    let migratedPaths = Array.isArray(saved.lifepaths) ? saved.lifepaths.slice(0, 5) : [];
+    let migratedPaths = Array.isArray(saved.lifepaths) ? saved.lifepaths.slice(0, 4) : [];
     if (migratedPaths[0] && !GAME.bornLifepaths.some(path => path.id === migratedPaths[0])) migratedPaths = [];
     for (let index = 1; index < migratedPaths.length; index++) {
       const path = GAME.lifepaths.find(candidate => candidate.id === migratedPaths[index]);
@@ -156,7 +183,7 @@ function loadCharacter() {
     }
     return {
       ...freshCharacter(), ...saved, lifepaths: migratedPaths,
-      skills: { ...freshCharacter().skills, ...saved.skills }
+      skillAdvances: { ...freshCharacter().skillAdvances, ...(saved.skillAdvances || {}) }
     };
   } catch { return freshCharacter(); }
 }
@@ -182,35 +209,76 @@ function availableSkills() {
   return [...GAME.standardSkills, ...GAME.professionalSkills.filter(skill => unlocked.includes(skill.id))];
 }
 
-function costToRaiseSkill(value) {
+function costToRaiseSkill(value, start = 20) {
   let cost = 0;
-  for (let current = 20; current < value; current++) cost += Math.max(1, Math.floor(current / 10));
+  for (let current = start; current < value; current++) cost += Math.max(1, Math.floor(current / 10));
   return cost;
 }
 
+function lifepathSkillPackage(lifepathId) {
+  const professional = GAME.professionalUnlocks[lifepathId] || [];
+  const profile = GAME.skillProfiles[GAME.lifepathProfiles[lifepathId]] || [];
+  return [...professional, ...profile].slice(0, 10).map((skillId, index) => ({
+    skillId,
+    boost: GAME.presetBoostPattern[index]
+  }));
+}
+
+function presetTraining() {
+  const ratings = Object.fromEntries([...GAME.standardSkills, ...GAME.professionalSkills].map(skill => [skill.id, 20]));
+  const boosts = Object.fromEntries([...GAME.standardSkills, ...GAME.professionalSkills].map(skill => [skill.id, 0]));
+  const paths = character.lifepaths.map((id, index) => {
+    const entries = lifepathSkillPackage(id);
+    let cost = 0;
+    entries.forEach(entry => {
+      const start = ratings[entry.skillId];
+      cost += costToRaiseSkill(start + entry.boost, start);
+      ratings[entry.skillId] += entry.boost;
+      boosts[entry.skillId] += entry.boost;
+    });
+    return { id, index, entries, cost, freePoints: Math.min(GAME.freePointsPerLifepath, Math.max(0, GAME.skillPointsPerLifepath - cost)) };
+  });
+  return { ratings, boosts, paths };
+}
+
+function skillValue(skillId) {
+  return presetTraining().ratings[skillId] + (character.skillAdvances[skillId] || 0);
+}
+
 function spentSkillPoints() {
-  return availableSkills().reduce((sum, skill) => sum + costToRaiseSkill(character.skills[skill.id] || 20), 0);
+  const training = presetTraining();
+  return availableSkills().reduce((sum, skill) => {
+    const start = training.ratings[skill.id];
+    return sum + costToRaiseSkill(start + (character.skillAdvances[skill.id] || 0), start);
+  }, 0);
 }
 
 function skillPointBudget() {
-  return character.lifepaths.length * GAME.skillPointsPerLifepath;
+  return presetTraining().paths.reduce((sum, path) => sum + path.freePoints, 0);
 }
 
 function remainingSkillPoints() {
   return skillPointBudget() - spentSkillPoints();
 }
 
+function skillAllocationComplete() {
+  const remaining = remainingSkillPoints();
+  if (remaining < 0) return false;
+  if (remaining === 0) return true;
+  return availableSkills().every(skill => skillValue(skill.id) >= 99 || Math.floor(skillValue(skill.id) / 10) > remaining);
+}
+
 function normalizeLockedSkills() {
   const unlocked = unlockedProfessionalSkillIds();
   GAME.professionalSkills.forEach(skill => {
-    if (!unlocked.includes(skill.id)) character.skills[skill.id] = 20;
+    if (!unlocked.includes(skill.id)) character.skillAdvances[skill.id] = 0;
   });
 }
 
 function completion() {
   const checks = [
-    !!character.name.trim() && !!character.sex && !!character.concept.trim(), !!character.ancestry, character.lifepaths.length === 5,
-    character.lifepaths.length === 5 && remainingSkillPoints() === 0,
+    !!character.name.trim() && !!character.sex && !!character.concept.trim(), !!character.ancestry, character.lifepaths.length === 4,
+    character.lifepaths.length === 4 && skillAllocationComplete(),
     character.features.length > 0
   ];
   return Math.round(checks.filter(Boolean).length / checks.length * 100);
@@ -235,8 +303,8 @@ function isStepComplete(index) {
   return [
     character.name.trim() && character.sex && character.concept.trim(),
     character.ancestry,
-    character.lifepaths.length === 5,
-    character.lifepaths.length === 5 && remainingSkillPoints() === 0,
+    character.lifepaths.length === 4,
+    character.lifepaths.length === 4 && skillAllocationComplete(),
     character.features.length > 0 && spentFeaturePoints() <= GAME.featureBudget,
     completion() === 100
   ][index];
@@ -304,13 +372,13 @@ function renderLifepath() {
   const isBorn = activeLifepathSlot === 0;
   const options = isBorn ? GAME.bornLifepaths : availableLifepaths(activeLifepathSlot);
   const selectedId = character.lifepaths[activeLifepathSlot];
-  return heading("A life before adventure", "Trace the road behind you.", "Choose where you were born, then follow four connected chapters. Each career requires a credible route through your earlier experience.") + `
+  return heading("A life before adventure", "Trace the road behind you.", "Choose where you were born, then follow three connected chapters for four total lifepaths. Each career requires a credible route through your earlier experience.") + `
     <div class="guide-toggle-row">
       <p>Exact roles and accumulated experience unlock later careers.</p>
       <button class="button ghost" data-guide-toggle>${showLifepathGuide ? "Hide lifepath guide" : "Open lifepath guide"}</button>
     </div>
     ${showLifepathGuide ? renderLifepathGuide() : ""}
-    <div class="lifepath-timeline">${Array.from({ length: 5 }, (_, index) => {
+    <div class="lifepath-timeline">${Array.from({ length: 4 }, (_, index) => {
       const path = getLifepath(character.lifepaths[index], index);
       const locked = index > character.lifepaths.length;
       return `<button class="lifepath-slot ${index === activeLifepathSlot ? "active" : ""} ${path ? "filled" : ""}" data-lifepath-slot="${index}" ${locked ? "disabled" : ""}>
@@ -323,6 +391,7 @@ function renderLifepath() {
       <button class="choice-card ${selectedId === item.id ? "selected" : ""}" data-lifepath-choice="${item.id}">
         <h3>${item.name}</h3><p>${item.description}</p><span class="tag">${item.benefit}</span>
         <small class="unlock-note">Unlocks ${professionalSkillNames(item.id)}</small>
+        <small class="training-note">Training: ${lifepathTrainingText(item.id)}</small>
         ${!isBorn ? `<small class="prereq-note">Requires: ${prerequisiteText(item)}</small>` : ""}
       </button>`).join("")}</div>`;
 }
@@ -330,6 +399,12 @@ function renderLifepath() {
 function professionalSkillNames(lifepathId) {
   return (GAME.professionalUnlocks[lifepathId] || [])
     .map(id => findById(GAME.professionalSkills, id)?.name).filter(Boolean).join(" + ");
+}
+
+function lifepathTrainingText(lifepathId) {
+  return lifepathSkillPackage(lifepathId)
+    .map(entry => `${skillName(entry.skillId)} +${entry.boost}`)
+    .join(", ");
 }
 
 function getLifepath(id, slot) {
@@ -377,7 +452,7 @@ function prerequisiteText(path) {
 function reachablePathsFromBorn(bornId) {
   const reached = new Set();
   let routes = [[bornId]];
-  for (let chapter = 1; chapter <= 4; chapter++) {
+  for (let chapter = 1; chapter <= 3; chapter++) {
     const nextRoutes = [];
     routes.forEach(history => availablePathsForHistory(history).forEach(path => {
       reached.add(path.id);
@@ -411,13 +486,32 @@ function renderSkills() {
   const remaining = remainingSkillPoints();
   const unlocked = unlockedProfessionalSkillIds();
   const professional = GAME.professionalSkills.filter(skill => unlocked.includes(skill.id));
-  return heading("Training & experience", "Invest your skill points.", `Every skill begins at 20. Each chosen lifepath grants ${GAME.skillPointsPerLifepath} points. The cost of an increase is the current tens band: 20→21 costs 2, while 40→41 costs 4.`) + `
+  return heading("Training & experience", "Shape your remaining training.", `Each lifepath automatically improves ten fitting skills: two each by +3, +5, +7, +9, and +11. Those advances use the normal scaled cost. Up to ${GAME.freePointsPerLifepath} remaining cost-points per path enter your free pool.`) + `
     <div class="budget-strip ${remaining < 0 ? "over" : ""}">
-      <span>${character.lifepaths.length} lifepaths × ${GAME.skillPointsPerLifepath} points</span>
-      <strong>${remaining} remaining</strong>
+      <span>Free training · max ${GAME.freePointsPerLifepath} per lifepath</span>
+      <strong>${remaining} / ${skillPointBudget()} remaining</strong>
     </div>
+    ${renderPresetTraining()}
     ${renderSkillGroup("Standard skills", GAME.standardSkills)}
     ${renderSkillGroup(`Professional skills · ${professional.length} unlocked`, professional, professional.length ? "" : "Choose lifepaths to unlock professional skills.")}`;
+}
+
+function renderPresetTraining() {
+  const training = presetTraining();
+  return `<section class="preset-training">
+    <div class="path-heading"><span>Training supplied by your lifepaths</span><small>Applied automatically</small></div>
+    <div class="preset-path-grid">${training.paths.map(path => {
+      const lifepath = getLifepath(path.id, path.index);
+      return `<article class="preset-path">
+        <div><h3>${lifepath?.name || path.id}</h3><small>${path.cost} scaled points · ${path.freePoints} free</small></div>
+        <p>${path.entries.map(entry => `${skillName(entry.skillId)} <strong>+${entry.boost}</strong>`).join(" · ")}</p>
+      </article>`;
+    }).join("") || `<p class="skill-empty">Choose lifepaths to receive preset training.</p>`}</div>
+  </section>`;
+}
+
+function skillName(id) {
+  return findById([...GAME.standardSkills, ...GAME.professionalSkills], id)?.name || id;
 }
 
 function renderSkillGroup(title, skills, emptyMessage = "") {
@@ -427,13 +521,15 @@ function renderSkillGroup(title, skills, emptyMessage = "") {
 }
 
 function renderSkillRow(skill) {
-  const value = character.skills[skill.id] || 20;
+  const value = skillValue(skill.id);
+  const freeAdvance = character.skillAdvances[skill.id] || 0;
+  const presetAdvance = presetTraining().boosts[skill.id] || 0;
   const nextCost = Math.max(1, Math.floor(value / 10));
   return `<div class="skill-row">
-    <div><strong>${skill.name}</strong><small>Next point: ${nextCost}</small></div>
+    <div><strong>${skill.name}</strong><small>Preset +${presetAdvance} · Free +${freeAdvance} · Next costs ${nextCost}</small></div>
     <div class="skill-controls" data-skill="${skill.id}">
-      <button data-skill-delta="-5" ${value <= 20 ? "disabled" : ""}>−5</button>
-      <button data-skill-delta="-1" ${value <= 20 ? "disabled" : ""}>−</button>
+      <button data-skill-delta="-5" ${freeAdvance <= 0 ? "disabled" : ""}>−5</button>
+      <button data-skill-delta="-1" ${freeAdvance <= 0 ? "disabled" : ""}>−</button>
       <b>${value}</b>
       <button data-skill-delta="1" ${nextCost > remainingSkillPoints() || value >= 99 ? "disabled" : ""}>+</button>
       <button data-skill-delta="5" ${nextCost > remainingSkillPoints() || value >= 99 ? "disabled" : ""}>+5</button>
@@ -480,7 +576,7 @@ function renderReview() {
       <section class="review-skills">
         <div class="review-skills-heading">
           <div><span class="preview-label">Complete skill profile</span><h3>Skills</h3></div>
-          <p><strong>${spentSkillPoints()}</strong> / ${skillPointBudget()} points spent</p>
+          <p><strong>${spentSkillPoints()}</strong> / ${skillPointBudget()} free points spent</p>
         </div>
         ${renderReviewSkillGroup("Standard skills", GAME.standardSkills)}
         ${renderReviewSkillGroup("Professional skills", unlockedProfessional)}
@@ -493,7 +589,7 @@ function renderReviewSkillGroup(title, skills) {
     <h4>${title}</h4>
     <div class="review-skill-list">${skills.length
       ? skills.map(skill => {
-          const value = character.skills[skill.id] || 20;
+          const value = skillValue(skill.id);
           return `<span class="${value > 20 ? "trained" : ""}"><i>${skill.name}</i><strong>${value}</strong></span>`;
         }).join("")
       : `<em>None unlocked.</em>`}
@@ -525,22 +621,26 @@ function bindStepEvents() {
     character.lifepaths = character.lifepaths.slice(0, activeLifepathSlot);
     character.lifepaths[activeLifepathSlot] = button.dataset.lifepathChoice;
     normalizeLockedSkills();
-    if (activeLifepathSlot < 4) activeLifepathSlot++;
+    if (activeLifepathSlot < 3) activeLifepathSlot++;
     saveCharacter(); render();
   }));
   document.querySelectorAll("[data-skill]").forEach(counter => counter.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
     const id = counter.dataset.skill;
     const delta = Number(button.dataset.skillDelta);
-    let value = character.skills[id] || 20;
-    if (delta < 0) value = Math.max(20, value + delta);
+    let freeAdvance = character.skillAdvances[id] || 0;
+    if (delta < 0) freeAdvance = Math.max(0, freeAdvance + delta);
     else {
+      let remaining = remainingSkillPoints();
+      let value = skillValue(id);
       for (let i = 0; i < delta && value < 99; i++) {
         const cost = Math.max(1, Math.floor(value / 10));
-        if (cost > remainingSkillPoints()) break;
+        if (cost > remaining) break;
+        freeAdvance++;
         value++;
+        remaining -= cost;
       }
     }
-    character.skills[id] = value; saveCharacter(); render();
+    character.skillAdvances[id] = freeAdvance; saveCharacter(); render();
   })));
   document.querySelectorAll("[data-feature]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.feature;
@@ -555,8 +655,8 @@ function renderPreview() {
   const lifepaths = character.lifepaths.map((id, index) => getLifepath(id, index)).filter(Boolean);
   const born = lifepaths[0];
   const features = character.features.map(id => findById(GAME.features, id)).filter(Boolean);
-  const bestSkills = availableSkills().filter(skill => (character.skills[skill.id] || 20) > 20)
-    .sort((a, b) => character.skills[b.id] - character.skills[a.id]).slice(0, 5);
+  const bestSkills = availableSkills().filter(skill => skillValue(skill.id) > 20)
+    .sort((a, b) => skillValue(b.id) - skillValue(a.id)).slice(0, 5);
   el("characterPreview").innerHTML = `
     <span class="preview-label">Character folio</span>
     <div class="preview-name">${escapeHtml(character.name) || "Unnamed Wanderer"}</div>
@@ -564,8 +664,8 @@ function renderPreview() {
     <div class="preview-divider"></div>
     <section class="preview-section"><h4>Ancestry</h4><p class="${ancestry ? "" : "empty-note"}">${ancestry?.name || "Not yet chosen"}</p></section>
     <section class="preview-section"><h4>Origin · Born lifepath</h4><p class="${born ? "" : "empty-note"}">${born?.name || "Not yet chosen"}</p></section>
-    <section class="preview-section"><h4>Lifepaths · ${lifepaths.length}/5</h4>${lifepaths.length ? `<ol>${lifepaths.map(path => `<li>${path.name}</li>`).join("")}</ol>` : `<p class="empty-note">No paths chosen</p>`}</section>
-    <section class="preview-section"><h4>Best skills</h4>${bestSkills.length ? `<ul>${bestSkills.map(skill => `<li>${skill.name} ${character.skills[skill.id]}</li>`).join("")}</ul>` : `<p class="empty-note">No training assigned</p>`}</section>
+    <section class="preview-section"><h4>Lifepaths · ${lifepaths.length}/4</h4>${lifepaths.length ? `<ol>${lifepaths.map(path => `<li>${path.name}</li>`).join("")}</ol>` : `<p class="empty-note">No paths chosen</p>`}</section>
+    <section class="preview-section"><h4>Best skills</h4>${bestSkills.length ? `<ul>${bestSkills.map(skill => `<li>${skill.name} ${skillValue(skill.id)}</li>`).join("")}</ul>` : `<p class="empty-note">No training assigned</p>`}</section>
     <section class="preview-section"><h4>Features</h4>${features.length ? `<ul>${features.map(f => `<li>${f.name}</li>`).join("")}</ul>` : `<p class="empty-note">No features chosen</p>`}</section>`;
 }
 

@@ -106,6 +106,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .choice-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .choice-card .tag { display: inline-block; margin-top: 11px; color: var(--rust); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .unlock-note { display: block; margin-top: 6px; color: var(--sage); font-size: 9px; font-weight: 700; }
+.training-note { display: block; margin-top: 7px; color: var(--ink); font-size: 8px; line-height: 1.45; }
 .prereq-note { display: block; margin-top: 7px; color: var(--muted); font-size: 9px; line-height: 1.4; }
 .choice-card .cost { position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 700; }
 .guide-toggle-row {
@@ -133,7 +134,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 }
 .prerequisite-index span { color: var(--muted); line-height: 1.4; }
 .lifepath-timeline {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin: -14px 0 24px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: -14px 0 24px;
 }
 .lifepath-slot {
   min-width: 0; padding: 11px 9px; text-align: left; border: 1px solid var(--line);
@@ -150,6 +151,16 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .path-list { margin: 0; padding-left: 18px; }
 .path-list li { margin-bottom: 6px; }
 .skill-section { margin: 25px 0; }
+.preset-training { margin: 24px 0 30px; }
+.preset-path-grid { display: grid; gap: 8px; }
+.preset-path {
+  display: grid; grid-template-columns: 155px 1fr; gap: 14px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 7px; background: #f5f8f2;
+}
+.preset-path h3 { margin: 0; font: 600 16px "Newsreader", serif; }
+.preset-path small { color: var(--sage); font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.preset-path p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
+.preset-path p strong { color: var(--ink); }
 .skill-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
 .skill-row {
   display: grid; grid-template-columns: minmax(100px,1fr) auto; align-items: center; gap: 8px;
@@ -267,6 +278,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   .builder { padding: 35px 20px 22px; min-height: calc(100vh - 145px); }
   .choice-grid, .field-row, .review-columns { grid-template-columns: 1fr; }
   .skill-grid { grid-template-columns: 1fr; }
+  .preset-path { grid-template-columns: 1fr; gap: 6px; }
   .review-skill-list { grid-template-columns: repeat(2, 1fr); }
   .lifepath-timeline { grid-template-columns: 1fr; }
   .guide-toggle-row { align-items: stretch; flex-direction: column; }

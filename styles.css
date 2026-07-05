@@ -147,8 +147,21 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 }
 .locked-panel strong { font: 600 20px "Newsreader", serif; }
 .locked-panel p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-.review-skill-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 11px; }
-.review-skill-list span { display: flex; justify-content: space-between; border-bottom: 1px dotted var(--line); }
+.review-skills { margin-top: 26px; padding-top: 20px; border-top: 2px solid var(--ink); }
+.review-skills-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 16px; }
+.review-skills-heading h3 { margin: 2px 0 0; font: 600 27px "Newsreader", serif; }
+.review-skills-heading p { margin: 0; color: var(--muted); font-size: 10px; }
+.review-skill-group + .review-skill-group { margin-top: 17px; }
+.review-skill-group h4 { margin: 0 0 8px; color: var(--rust); font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; }
+.review-skill-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 14px; font-size: 10px; }
+.review-skill-list span {
+  display: flex; justify-content: space-between; gap: 6px; padding: 3px 1px;
+  color: var(--muted); border-bottom: 1px dotted var(--line);
+}
+.review-skill-list span.trained { color: var(--ink); font-weight: 600; }
+.review-skill-list i { overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.review-skill-list strong { font: 600 13px "Newsreader", serif; }
+.review-skill-list em { color: var(--muted); font-size: 10px; }
 .budget-strip {
   display: flex; align-items: center; justify-content: space-between; margin: -18px 0 22px;
   border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; background: #fff;
@@ -229,6 +242,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   .builder { padding: 35px 20px 22px; min-height: calc(100vh - 145px); }
   .choice-grid, .field-row, .review-columns { grid-template-columns: 1fr; }
   .skill-grid { grid-template-columns: 1fr; }
+  .review-skill-list { grid-template-columns: repeat(2, 1fr); }
   .lifepath-timeline { grid-template-columns: 1fr; }
   .lifepath-slot { display: grid; grid-template-columns: 70px 1fr; align-items: center; }
   .lifepath-slot strong { margin: 0; }
@@ -241,4 +255,8 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   .app-shell, .builder, .step-content { display: block; padding: 0; margin: 0; max-width: none; }
   .builder h1 { display: none; }
   .review-sheet { border: 0; box-shadow: none; padding: 0; }
+  .review-skills { break-before: auto; page-break-inside: avoid; }
+  .review-skill-list { grid-template-columns: repeat(3, 1fr); }
+  .review-skill-list span { color: #4e4841; }
+  .review-skill-list span.trained { color: #000; }
 }

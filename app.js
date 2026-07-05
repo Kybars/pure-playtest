@@ -351,7 +351,7 @@ function renderReview() {
   const lifepaths = character.lifepaths.map((id, index) => getLifepath(id, index)).filter(Boolean);
   const born = lifepaths[0];
   const features = character.features.map(id => findById(GAME.features, id)).filter(Boolean);
-  const trainedSkills = availableSkills().filter(skill => (character.skills[skill.id] || 20) > 20);
+  const unlockedProfessional = GAME.professionalSkills.filter(skill => unlockedProfessionalSkillIds().includes(skill.id));
   return heading("The road awaits", "Review your character.", "Everything below will become your print-ready character sheet. Use your browser’s PDF option when exporting.") + `
     <div class="review-sheet">
       <h2>${escapeHtml(character.name) || "Unnamed Wanderer"}</h2>
@@ -364,12 +364,32 @@ function renderReview() {
           <section class="review-block"><h3>Appearance & manner</h3><p>${escapeHtml(character.appearance) || "Not yet described."}</p></section>
         </div>
         <div>
-          <section class="review-block"><h3>Trained skills</h3><div class="review-skill-list">${trainedSkills.length ? trainedSkills.map(skill => `<span>${skill.name} <strong>${character.skills[skill.id]}</strong></span>`).join("") : "No points assigned."}</div></section>
           <section class="review-block"><h3>Features</h3>${features.length ? `<ul>${features.map(f => `<li><strong>${f.name}.</strong> ${f.description}</li>`).join("")}</ul>` : "<p>None chosen.</p>"}</section>
           <section class="review-block"><h3>Adventurer's notes</h3><textarea data-field="notes" placeholder="Allies, ambitions, burdens...">${escapeHtml(character.notes)}</textarea></section>
         </div>
       </div>
+      <section class="review-skills">
+        <div class="review-skills-heading">
+          <div><span class="preview-label">Complete skill profile</span><h3>Skills</h3></div>
+          <p><strong>${spentSkillPoints()}</strong> / ${skillPointBudget()} points spent</p>
+        </div>
+        ${renderReviewSkillGroup("Standard skills", GAME.standardSkills)}
+        ${renderReviewSkillGroup("Professional skills", unlockedProfessional)}
+      </section>
     </div>`;
+}
+
+function renderReviewSkillGroup(title, skills) {
+  return `<div class="review-skill-group">
+    <h4>${title}</h4>
+    <div class="review-skill-list">${skills.length
+      ? skills.map(skill => {
+          const value = character.skills[skill.id] || 20;
+          return `<span class="${value > 20 ? "trained" : ""}"><i>${skill.name}</i><strong>${value}</strong></span>`;
+        }).join("")
+      : `<em>None unlocked.</em>`}
+    </div>
+  </div>`;
 }
 
 function bindStepEvents() {

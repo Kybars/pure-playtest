@@ -160,7 +160,7 @@ const STEPS = [
 
 const freshCharacter = () => ({
   name: "", sex: "", concept: "", appearance: "", ancestry: "", lifepaths: [],
-  stageAllocations: [],
+  stageAllocations: [], skillModes: [], skillPriorityOrders: [],
   features: [], notes: ""
 });
 
@@ -189,7 +189,9 @@ function loadCharacter() {
     }
     return {
       ...freshCharacter(), ...saved, lifepaths: migratedPaths,
-      stageAllocations: Array.isArray(saved.stageAllocations) ? saved.stageAllocations.slice(0, migratedPaths.length) : []
+      stageAllocations: Array.isArray(saved.stageAllocations) ? saved.stageAllocations.slice(0, migratedPaths.length) : [],
+      skillModes: Array.isArray(saved.skillModes) ? saved.skillModes.slice(0, migratedPaths.length) : [],
+      skillPriorityOrders: Array.isArray(saved.skillPriorityOrders) ? saved.skillPriorityOrders.slice(0, migratedPaths.length) : []
     };
   } catch { return freshCharacter(); }
 }
@@ -317,6 +319,8 @@ function skillAllocationComplete() {
 
 function normalizeLockedSkills() {
   character.stageAllocations = character.stageAllocations.slice(0, character.lifepaths.length);
+  character.skillModes = character.skillModes.slice(0, character.lifepaths.length);
+  character.skillPriorityOrders = character.skillPriorityOrders.slice(0, character.lifepaths.length);
   character.stageAllocations = character.stageAllocations.map((allocations = {}, index) => {
     const allowed = new Set(availableSkillsAtStage(index).map(skill => skill.id));
     return Object.fromEntries(Object.entries(allocations).filter(([id]) => allowed.has(id)));
@@ -530,6 +534,127 @@ function renderLifepathGuide() {
   </section>`;
 }
 
+function getSkillMode(stageIndex) {
+  return character.skillModes?.[stageIndex] || "manual";
+}
+
+function setSkillMode(stageIndex, mode) {
+  character.skillModes[stageIndex] = mode;
+  if (mode === "priority") {
+    const stage = trainingState().stages[stageIndex];
+    priorityBudgetDistribution(stage);
+  }
+  saveCharacter();
+  render();
+}
+
+function defaultPriorityOrder(stageIndex) {
+  const available = availableSkillsAtStage(stageIndex).map(skill => skill.id);
+  const professional = available.filter(skillId => GAME.professionalSkills.some(skill => skill.id === skillId));
+  const other = available.filter(skillId => !professional.includes(skillId));
+  return [...professional, ...other];
+}
+
+function getPriorityOrder(stageIndex) {
+  const availableSkillsById = new Set(availableSkillsAtStage(stageIndex).map(skill => skill.id));
+  const savedOrder = Array.isArray(character.skillPriorityOrders?.[stageIndex]) ? character.skillPriorityOrders[stageIndex] : [];
+  const ordered = savedOrder.filter(skillId => availableSkillsById.has(skillId));
+  const missing = defaultPriorityOrder(stageIndex).filter(skillId => !ordered.includes(skillId));
+  return [...ordered, ...missing];
+}
+
+function setPriorityOrder(stageIndex, order) {
+  character.skillPriorityOrders[stageIndex] = order;
+  saveCharacter();
+}
+
+function reorderPrioritySkills(stageIndex, draggedId, targetId) {
+  const order = getPriorityOrder(stageIndex);
+  const fromIndex = order.indexOf(draggedId);
+  const toIndex = order.indexOf(targetId);
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+  const [moved] = order.splice(fromIndex, 1);
+  order.splice(toIndex, 0, moved);
+  setPriorityOrder(stageIndex, order);
+}
+
+function priorityBudgetDistribution(stage) {  
+  // Get the current order
+  const order = getPriorityOrder(stage.index);
+  let budget = stage.remaining;
+  if (!order.length) return order.map(() => 0);
+
+  // Reset
+  order.forEach(skillId => {
+    let currentValue = stage.afterPresetRatings[skillId];
+    let currentIncrease = character.stageAllocations[stage.index][skillId] || 0;
+    const cost = costToRaiseSkill(currentValue + currentIncrease, currentValue);
+    budget += cost;
+  });
+  character.stageAllocations[stage.index] = {};
+  saveCharacter();
+  if (budget <= 0) return order.map(() => 0);
+  
+  // Get the budget distribution
+  let bucketSize = 10;
+  let skillCounter = bucketSize;
+  let increment = Math.ceil(2*budget/(bucketSize*(bucketSize+1)));
+
+  // Apply to character allocations
+  order.forEach(skillId => {
+    let skillBudget = Math.min(skillCounter*increment, GAME.skillPointCapPerStage-(stage.presetCosts[skillId] || 0), budget);
+    skillCounter = Math.max(1, skillCounter-1);
+    let increase = 0;
+    let currentValue = stage.afterPresetRatings[skillId];
+    let maxValue = Math.min(99, (stage.startRatings[skillId] || 20) + GAME.skillPointCapPerStage);
+    while (skillBudget > 0 && currentValue + increase < maxValue) {
+      const nextCost = costToRaiseSkill(currentValue + increase + 1, currentValue + increase);
+      if (nextCost > skillBudget) break;
+      budget -= nextCost;
+      skillBudget -= nextCost;
+      increase++;
+    }
+    character.stageAllocations[stage.index][skillId] = increase;
+  });
+}
+
+function renderSkillModeToggle(stage) {
+  const mode = getSkillMode(stage.index);
+  return `<div class="skill-mode-toggle">
+    <div>
+      <span>Training style</span>
+      <button class="button ghost" data-reset-stage-allocations="${stage.index}">Reset allocations</button>
+    </div>
+    <div class="segmented-choice" role="group" aria-label="Skill training style">
+      <button type="button" class="${mode === "manual" ? "selected" : ""}" data-skill-mode="manual">Manual increments</button>
+      <button type="button" class="${mode === "priority" ? "selected" : ""}" data-skill-mode="priority">Priority order</button>
+    </div>
+  </div>`;
+}
+
+function renderPrioritySkillView(stage) {
+  const order = getPriorityOrder(stage.index);
+  const allocations = order.map(skillId => character.stageAllocations[stage.index]?.[skillId] || 0);
+  return `<section class="skill-section">
+    <div class="path-heading"><span>Priority order</span><small>Drag to set the order of application</small></div>
+    <p class="priority-summary">The top skill receives the first full level increase, and any leftover budget carries on to the lower-priority skills in staggered decrements.</p>
+    <p class="manual-advice">Switch to manual mode for final touches.</p>
+    <div class="priority-skill-list">
+      ${order.map((skillId, index) => {
+        const skill = findById(allSkillDefinitions(), skillId);
+        if (!skill) return "";
+        return `<div class="priority-skill-row" draggable="true" data-priority-skill="${skill.id}">
+          <span class="priority-handle" aria-hidden="true">⋮⋮</span>
+          <div class="priority-skill-main">
+            <strong>${skill.name}</strong>
+          </div>
+          <span class="priority-share">${stage.endRatings[skillId]}+${(allocations[index] || 0)}</span>
+        </div>`;
+      }).join("")}
+    </div>
+  </section>`;
+}
+
 function renderSkills() {
   if (!character.lifepaths.length) {
     return heading("Lifepaths required", "Choose your history first.", "Each lifepath creates its own 300-point training stage.");
@@ -542,6 +667,7 @@ function renderSkills() {
   const stageSkills = availableSkillsAtStage(activeSkillStage);
   const professional = stageSkills.filter(skill => GAME.professionalSkills.some(item => item.id === skill.id));
   const lifepath = getLifepath(stage.id, stage.index);
+  const mode = getSkillMode(activeSkillStage);
   return heading("Training & experience", "Spend each stage in sequence.", `Every lifepath has 300 points. Its ten preset increases are charged first; you may then train any available skill, but no single skill may consume more than ${GAME.skillPointCapPerStage} cost-points during that stage.`) + `
     <div class="skill-stage-tabs">${state.stages.map(item => {
       const path = getLifepath(item.id, item.index);
@@ -554,10 +680,12 @@ function renderSkills() {
       <span>${lifepath?.name || "Stage"} · Preset ${stage.presetCost} + Invested ${stage.freeCost}</span>
       <strong>${stage.remaining} / ${GAME.skillPointsPerLifepath} remaining</strong>
     </div>
+    ${renderSkillModeToggle(stage)}
     ${renderPresetTraining(stage)}
-    ${renderCombatSkillGroup(stage)}
-    ${renderSkillGroup("Standard skills", GAME.standardSkills, stage)}
-    ${renderSkillGroup(`Professional skills · ${professional.length} available`, professional, stage, professional.length ? "" : "This stage has no professional skills unlocked.")}`;
+    ${mode === "priority" ? renderPrioritySkillView(stage) : `
+      ${renderCombatSkillGroup(stage)}
+      ${renderSkillGroup("Standard skills", GAME.standardSkills, stage)}
+      ${renderSkillGroup(`Professional skills · ${professional.length} available`, professional, stage, professional.length ? "" : "This stage has no professional skills unlocked.")}`}`;
 }
 
 function renderPresetTraining(stage) {
@@ -702,6 +830,39 @@ function bindStepEvents() {
   document.querySelectorAll("[data-skill-stage]").forEach(button => button.addEventListener("click", () => {
     if (!button.disabled) { activeSkillStage = Number(button.dataset.skillStage); render(); }
   }));
+  document.querySelectorAll("[data-skill-mode]").forEach(button => button.addEventListener("click", () => {
+    setSkillMode(activeSkillStage, button.dataset.skillMode);
+    render();
+  }));
+  document.querySelectorAll("[data-reset-stage-allocations]").forEach(button => button.addEventListener("click", () => {
+    const stageIndex = Number(button.dataset.resetStageAllocations);
+    character.stageAllocations[stageIndex] = {};
+    saveCharacter();
+    render();
+  }));
+  document.querySelectorAll("[data-priority-skill]").forEach(item => {
+    item.addEventListener("dragstart", event => {
+      event.dataTransfer?.setData("text/plain", item.dataset.prioritySkill);
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragend", () => item.classList.remove("dragging"));
+    item.addEventListener("dragover", event => {
+      event.preventDefault();
+      item.classList.add("drag-over");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+    item.addEventListener("drop", event => {
+      event.preventDefault();
+      item.classList.remove("drag-over");
+      const draggedId = event.dataTransfer?.getData("text/plain");
+      const targetId = item.dataset.prioritySkill;
+      if (!draggedId || draggedId === targetId) return;
+      reorderPrioritySkills(activeSkillStage, draggedId, targetId);
+      const stage = trainingState().stages[activeSkillStage];
+      priorityBudgetDistribution(stage);
+      render();
+    });
+  });
   document.querySelectorAll("[data-skill]").forEach(counter => counter.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
     const id = counter.dataset.skill;
     const delta = Number(button.dataset.skillDelta);

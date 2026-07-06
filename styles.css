@@ -160,6 +160,14 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
   padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.58); cursor: grab;
 }
+.priority-combat-skill-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  padding: 7px 12px; border: 1px solid #b9a47f; border-radius: 8px; background: #faf5e9; cursor: grab;
+}
+.priority-professional-skill-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  padding: 7px 12px; border: 1px solid #BF40BF; border-radius: 8px; background: #D8BFD8; cursor: grab;
+}
 .priority-skill-row.dragging { opacity: .6; }
 .priority-skill-row.drag-over { border-color: var(--rust); box-shadow: inset 0 0 0 1px var(--rust); }
 .priority-handle { color: var(--muted); font-size: 13px; letter-spacing: 1px; }
@@ -196,6 +204,7 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .skill-row > div:first-child strong { display: block; overflow: hidden; font: 600 14px "Newsreader",serif; text-overflow: ellipsis; white-space: nowrap; }
 .skill-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
 .combat-skill-section { padding: 16px; border: 1px solid #b9a47f; border-radius: 9px; background: #faf5e9; }
+.professional-skill-section { padding: 16px; border: 1px solid #BF40BF; border-radius: 9px; background: #D8BFD8; }
 .skill-controls { display: flex; align-items: center; gap: 3px; }
 .skill-controls button {
   min-width: 25px; height: 25px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px;

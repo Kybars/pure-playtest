@@ -252,11 +252,13 @@ function trainingState() {
   const stages = character.lifepaths.map((id, index) => {
     const startRatings = { ...ratings };
     const entries = lifepathSkillPackage(id);
+    const presetBoosts = {};
     const presetCosts = {};
     entries.forEach(entry => {
       const start = ratings[entry.skillId];
       presetCosts[entry.skillId] = costToRaiseSkill(start + entry.boost, start);
       ratings[entry.skillId] += entry.boost;
+      presetBoosts[entry.skillId] = entry.boost;
       totalPresetBoosts[entry.skillId] += entry.boost;
     });
     const afterPresetRatings = { ...ratings };
@@ -277,7 +279,7 @@ function trainingState() {
     const freeCost = Object.values(freeCosts).reduce((sum, cost) => sum + cost, 0);
     const totalSpent = presetCost + freeCost;
     return {
-      id, index, entries, startRatings, afterPresetRatings, endRatings: { ...ratings },
+      id, index, entries, presetBoosts, startRatings, afterPresetRatings, endRatings: { ...ratings },
       presetCosts, freeCosts, skillCosts, presetCost, freeCost, totalSpent,
       remaining: GAME.skillPointsPerLifepath - totalSpent,
       valid: totalSpent <= GAME.skillPointsPerLifepath && Object.values(skillCosts).every(cost => cost <= GAME.skillPointCapPerStage)
@@ -606,13 +608,22 @@ function priorityBudgetDistribution(stage) {
   if (budget <= 0) return order.map(() => 0);
   
   // Get the budget distribution
-  let bucketSize = 10;
-  let skillCounter = bucketSize;
-  let increment = Math.ceil(2*budget/(bucketSize*(bucketSize+1)));
+  let prioBudget = budget;
+  let prioSize = 10;
+  let skillCounter = prioSize;
+  order.forEach(skillId => {
+    if (skillCounter-- >= 0) {
+      let presetCost = (stage.presetCosts[skillId] || 0);
+      prioBudget += presetCost;
+    }
+  });
+  let increment = Math.ceil(2*prioBudget/(prioSize*(prioSize+1)));
 
   // Apply to character allocations
+  skillCounter = prioSize;
   order.forEach(skillId => {
-    let skillBudget = Math.min(skillCounter*increment, GAME.skillPointCapPerStage-(stage.presetCosts[skillId] || 0), budget);
+    let presetCost = (stage.presetCosts[skillId] || 0);
+    let skillBudget = Math.min(skillCounter*increment-presetCost, GAME.skillPointCapPerStage-presetCost, budget);
     skillCounter = Math.max(1, skillCounter-1);
     let increase = 0;
     let currentValue = stage.afterPresetRatings[skillId];
@@ -632,7 +643,8 @@ function addNoise() {
   character.noise = {};
   let training = trainingState();
   const unlockedProfessional = GAME.professionalSkills.filter(skill => unlockedProfessionalSkillIds().includes(skill.id));
-  let skills = [...unlockedProfessional, ...GAME.standardSkills, ...GAME.combatSkills];
+  const activeCombat = activeCombatSkills();
+  let skills = [...unlockedProfessional, ...GAME.standardSkills, ...activeCombat];
   let lastStage = training.stages[training.stages.length - 1];
   let budget = remainingSkillPoints();
   // Prune 10 random skills
@@ -676,7 +688,9 @@ function renderSkillModeToggle(stage) {
 
 function renderPrioritySkillView(stage) {
   const order = getPriorityOrder(stage.index);
-  const allocations = order.map(skillId => character.stageAllocations[stage.index]?.[skillId] || 0);
+  const allocations = order.map(skillId => character.stageAllocations[stage.index]?.[skillId] || 0);  
+  const unlockedProfessional = GAME.professionalSkills.filter(skill => unlockedProfessionalSkillIds().includes(skill.id));
+  const activeCombat = activeCombatSkills();
   return `<section class="skill-section">
     <div class="path-heading"><span>Priority order</span><small>Drag to set the order of application</small></div>
     <p class="priority-summary">The top skill receives the first full level increase, and any leftover budget carries on to the lower-priority skills in staggered decrements.</p>
@@ -685,13 +699,32 @@ function renderPrioritySkillView(stage) {
       ${order.map((skillId, index) => {
         const skill = findById(allSkillDefinitions(), skillId);
         if (!skill) return "";
-        return `<div class="priority-skill-row" draggable="true" data-priority-skill="${skill.id}">
-          <span class="priority-handle" aria-hidden="true">⋮⋮</span>
-          <div class="priority-skill-main">
-            <strong>${skill.name}</strong>
-          </div>
-          <span class="priority-share">${stage.endRatings[skillId]}+${(allocations[index] || 0)}</span>
+        const value = stage.endRatings[skill.id];
+        const freeAdvance = character.stageAllocations[stage.index]?.[skill.id] || 0;
+        const presetAdvance = stage.presetBoosts[skillId] || 0;
+        const stageCost = stage.skillCosts[skill.id] || 0;
+        let skillLine = `<div class="`;
+        if (unlockedProfessional.includes(skill)) {
+          skillLine += `priority-professional-skill-row" draggable="true" data-priority-skill="${skill.id}">`;
+        }
+        else if (activeCombat.includes(skill)) {
+          skillLine += `priority-combat-skill-row" draggable="true" data-priority-skill="${skill.id}">`;
+        }
+        else {
+          skillLine += `priority-skill-row" draggable="true" data-priority-skill="${skill.id}">`;
+        }
+        skillLine += `<span class="priority-handle" aria-hidden="true">⋮⋮</span>
+        <div class="priority-skill-main">
+          <strong>${skill.name}</strong><small>${stage.startRatings[skillId]} → ${value} · Preset +${presetAdvance} · Invested +${freeAdvance} · ${stageCost}/${GAME.skillPointCapPerStage} pts</small>
         </div>`;
+        if (stage.presetBoosts[skillId]) {
+          skillLine += `<span class="priority-share">${stage.startRatings[skillId]}+${stage.presetBoosts[skillId]}+${(allocations[index] || 0)}</span>`;
+        }
+        else {
+          skillLine += `<span class="priority-share">${stage.startRatings[skillId]}+${(allocations[index] || 0)}</span>`;
+        }
+        skillLine += `</div>`;
+        return skillLine;
       }).join("")}
     </div>
   </section>`;
@@ -727,7 +760,7 @@ function renderSkills() {
     ${mode === "priority" ? renderPrioritySkillView(stage) : `
       ${renderCombatSkillGroup(stage)}
       ${renderSkillGroup("Standard skills", GAME.standardSkills, stage)}
-      ${renderSkillGroup(`Professional skills · ${professional.length} available`, professional, stage, professional.length ? "" : "This stage has no professional skills unlocked.")}`}`;
+      ${renderProfessionalSkillGroup(`Professional skills · ${professional.length} available`, professional, stage, professional.length ? "" : "This stage has no professional skills unlocked.")}`}`;
 }
 
 function renderPresetTraining(stage) {
@@ -753,6 +786,12 @@ function renderCombatSkillGroup(stage) {
 
 function renderSkillGroup(title, skills, stage, emptyMessage = "") {
   return `<section class="skill-section"><div class="path-heading"><span>${title}</span></div>
+    ${skills.length ? `<div class="skill-grid">${skills.map(skill => renderSkillRow(skill, stage)).join("")}</div>` : `<p class="skill-empty">${emptyMessage}</p>`}
+  </section>`;
+}
+
+function renderProfessionalSkillGroup(title, skills, stage, emptyMessage = "") {
+  return `<section class="skill-section professional-skill-section"><div class="path-heading"><span>${title}</span></div>
     ${skills.length ? `<div class="skill-grid">${skills.map(skill => renderSkillRow(skill, stage)).join("")}</div>` : `<p class="skill-empty">${emptyMessage}</p>`}
   </section>`;
 }

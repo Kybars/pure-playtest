@@ -46,6 +46,9 @@ const GAME = {
     { id: "willpower", name: "Willpower" },
     { id: "dodge", name: "Dodge" }
   ],
+  magicSkills: [
+    { id: "magic-combat", name: "Magic Combat" }
+  ],
   professionalSkills: [
     { id: "engineering", name: "Engineering" },
     { id: "instruction", name: "Instruction" },
@@ -78,7 +81,19 @@ const GAME = {
     { id: "impersonation", name: "Impersonation" },
     { id: "sleight", name: "Sleight" },
     { id: "streetwise", name: "Streetwise" },
-    { id: "combat-magic", name: "Combat Magic", hidden: true }
+    { id: "invocation-any", name: "Invocation (any)", repeatable: true, magicTradition: "arcane", specializations: ["Fire", "Ice", "Shadow", "Light", "Storm", "Mind"] },
+    { id: "shaping", name: "Shaping", magicTradition: "arcane" },
+    { id: "devotion-any", name: "Devotion (any)", repeatable: true, magicTradition: "divine", specializations: ["War", "Mercy", "Death", "Harvest", "Sea", "Sun"] },
+    { id: "exhort", name: "Exhort", magicTradition: "divine" }
+  ],
+  birthPerks: [
+    { id: "gifted", name: "Gifted", tradition: "arcane", description: "You have a gift for Arcane Magic.", effect: "Unlocks Magic Combat, Invocation (any), and Shaping." },
+    { id: "blessed", name: "Blessed", tradition: "divine", description: "You are blessed by the Gods.", effect: "Unlocks Magic Combat, Devotion (any), and Exhort." },
+    { id: "strong", name: "Strong", description: "You are exceptionally strong.", effect: "Add +1d4 damage modifier to all your attacks." },
+    { id: "ironborn", name: "Ironborn", description: "Hardship marked you before you could walk.", effect: "Once per session, ignore the first fatigue, poison, or disease penalty applied to you." },
+    { id: "quickblood", name: "Quickblood", description: "Your reflexes are unnaturally sharp.", effect: "Once per combat, after initiative is rolled, move yourself one position higher in the order." },
+    { id: "silver-voice", name: "Silver Voice", description: "People remember your words even when they wish they did not.", effect: "Once per scene, reroll a failed Influence, Deception, Oratory, or Performance check." },
+    { id: "lucky-star", name: "Lucky Star", description: "Fortune has an irritating fondness for you.", effect: "Once per session, turn a fumbled non-combat roll into an ordinary failure." }
   ],
   perkTemplates: {
     stealth: [
@@ -136,6 +151,7 @@ const freshCharacter = () => ({
   appearance: "",
   manners: "",
   ancestry: "",
+  birthPerk: "",
   professionalSkills: [],
   professionalSpecializations: {},
   skillOrder: [],
@@ -157,6 +173,7 @@ function loadCharacter() {
     if (!saved) return freshCharacter();
     const migrated = { ...freshCharacter(), ...saved };
     migrated.gender = saved.gender || saved.sex || "";
+    migrated.birthPerk = GAME.birthPerks.some(perk => perk.id === saved.birthPerk) ? saved.birthPerk : "";
     migrated.professionalSpecializations = typeof saved.professionalSpecializations === "object" && saved.professionalSpecializations ? saved.professionalSpecializations : {};
     migrated.professionalSkills = Array.isArray(saved.professionalSkills)
       ? saved.professionalSkills
@@ -189,7 +206,20 @@ function saveCharacter() {
 }
 
 function selectableProfessionalSkills() {
-  return GAME.professionalSkills.filter(skill => !skill.hidden);
+  const tradition = activeMagicTradition();
+  return GAME.professionalSkills.filter(skill => !skill.magicTradition || skill.magicTradition === tradition);
+}
+
+function selectedBirthPerk() {
+  return findById(GAME.birthPerks, character.birthPerk);
+}
+
+function activeMagicTradition() {
+  return selectedBirthPerk()?.tradition || "";
+}
+
+function activeMagicSkills() {
+  return activeMagicTradition() ? GAME.magicSkills : [];
 }
 
 function professionalBaseId(key) {
@@ -255,16 +285,28 @@ function chosenProfessionalSkills() {
     .filter(Boolean);
 }
 
+function chosenMagicProfessionalSkills() {
+  return chosenProfessionalSkills().filter(skill => skill.magicTradition);
+}
+
+function chosenNonMagicProfessionalSkills() {
+  return chosenProfessionalSkills().filter(skill => !skill.magicTradition);
+}
+
+function reviewMagicSkills() {
+  return [...activeMagicSkills(), ...chosenMagicProfessionalSkills()];
+}
+
 function allSelectedSkills(professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
   const selectedProfessionals = professionalIds
     .map(id => professionalSkillFromKey(id, specializations))
     .filter(Boolean);
-  return [...GAME.combatSkills, ...GAME.standardSkills, ...selectedProfessionals]
+  return [...GAME.combatSkills, ...activeMagicSkills(), ...GAME.standardSkills, ...selectedProfessionals]
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function allSkillDefinitions() {
-  return [...GAME.fixedSkills, ...GAME.combatSkills, ...GAME.standardSkills, ...GAME.professionalSkills, ...chosenProfessionalSkills()];
+  return [...GAME.fixedSkills, ...GAME.combatSkills, ...GAME.magicSkills, ...GAME.standardSkills, ...GAME.professionalSkills, ...chosenProfessionalSkills()];
 }
 
 function normalizeSkillOrder(order = character.skillOrder, professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
@@ -296,7 +338,7 @@ function skillValue(id) {
 function completionChecks() {
   return [
     !!character.name.trim() && !!character.gender && !!character.concept.trim(),
-    !!character.ancestry,
+    !!character.ancestry && !!character.birthPerk,
     character.professionalSkills.length === GAME.professionalSkillChoices,
     skillOrderComplete(),
     perksComplete(),
@@ -329,7 +371,7 @@ function updateProgress() {
             : "Choose perks for skills at 50 or higher."
           : "Put your skills in priority order."
         : `Choose ${GAME.professionalSkillChoices} professional skills.`
-      : "Choose an ancestry."
+      : "Choose ancestry and birth perk."
     : "Start with any identity details you know.";
 }
 
@@ -398,12 +440,29 @@ function renderIdentity() {
 }
 
 function renderAncestry() {
-  return heading("Blood and belonging", "Choose ancestry.", "Only humans are available in this playtest, but the sheet is ready for more ancestries later.") + `
-    <div class="choice-grid">${GAME.ancestries.map(ancestry => `
-      <button class="choice-card ${character.ancestry === ancestry.id ? "selected" : ""} ${!ancestry.available ? "unavailable" : ""}" data-ancestry="${ancestry.id}" ${!ancestry.available ? "disabled" : ""}>
-        <div><h3>${ancestry.name}</h3><p>${ancestry.description}</p></div>
-        <small>${ancestry.benefit}</small>
-      </button>`).join("")}</div>`;
+  return heading("Blood and belonging", "Choose ancestry.", "Choose your ancestry, then choose one birth perk: the mark, blessing, gift, or quirk you were born with.") + `
+    <div class="choice-grid ancestry-choice-grid">${GAME.ancestries.map(ancestry => {
+      const selected = character.ancestry === ancestry.id;
+      return `<article class="choice-card ancestry-card ${selected ? "selected expanded" : ""} ${!ancestry.available ? "unavailable" : ""}">
+        <button type="button" class="ancestry-card-button" data-ancestry="${ancestry.id}" ${!ancestry.available ? "disabled" : ""}>
+          <div><h3>${ancestry.name}</h3><p>${ancestry.description}</p></div>
+          <small>${ancestry.benefit}</small>
+        </button>
+        ${selected ? renderBirthPerks() : ""}
+      </article>`;
+    }).join("")}</div>`;
+}
+
+function renderBirthPerks() {
+  return `<section class="birth-perk-panel">
+    <div class="path-heading"><span>Birth perk</span><small>Choose one</small></div>
+    <div class="birth-perk-list">${GAME.birthPerks.map(perk => `
+      <button type="button" class="birth-perk-card ${character.birthPerk === perk.id ? "selected" : ""}" data-birth-perk="${perk.id}">
+        <strong>${perk.name}</strong>
+        <span>${perk.description}</span>
+        <em>${perk.effect}</em>
+      </button>`).join("")}</div>
+  </section>`;
 }
 
 function renderProfessionalChoice() {
@@ -412,9 +471,10 @@ function renderProfessionalChoice() {
       + `<div class="locked-panel"><strong>Professional choices are locked</strong><p>Return to Ancestry and choose Human to continue.</p></div>`;
   }
   const remaining = GAME.professionalSkillChoices - character.professionalSkills.length;
+  const tradition = activeMagicTradition();
   return heading("Specialisation", `Choose ${GAME.professionalSkillChoices} professional skills.`, "These are the specialised skills your character brings into play. Pick exactly seven; the rest of the skill list is fixed.") + `
     <div class="budget-strip ${remaining < 0 ? "over" : ""}">
-      <span>Specialisations selected</span>
+      <span>Specialisations selected${tradition ? ` · ${tradition} magic unlocked` : ""}</span>
       <strong>${character.professionalSkills.length} / ${GAME.professionalSkillChoices}</strong>
     </div>
     <div class="choice-grid professional-choice-grid">${selectableProfessionalSkills().map(skill => {
@@ -571,6 +631,7 @@ function renderPerkSlot(skill) {
 
 function renderReview() {
   const ancestry = findById(GAME.ancestries, character.ancestry);
+  const birthPerk = selectedBirthPerk();
   const perks = unlockedPerkSkills().map(skill => ({ skill, perk: resolvedPerkForSkill(skill) })).filter(item => item.perk);
   const physicalDetails = [
     character.age ? `Age ${escapeHtml(character.age)}` : "",
@@ -585,10 +646,11 @@ function renderReview() {
         <div>
           <section class="review-block"><h3>Player</h3><p>${escapeHtml(character.playerName) || "Not listed."}</p></section>
           <section class="review-block"><h3>Ancestry</h3><p><strong>${ancestry?.name || "Not chosen"}</strong><br>${ancestry?.description || ""}</p></section>
+          <section class="review-block"><h3>Birth perk</h3><p>${birthPerk ? `<strong>${birthPerk.name}.</strong> ${birthPerk.description}<br>${birthPerk.effect}` : "Not chosen."}</p></section>
           <section class="review-block"><h3>Details</h3><p>${physicalDetails || "Age, height, and weight not listed."}</p></section>
           <section class="review-block"><h3>Appearance</h3><p>${escapeHtml(character.appearance) || "Not yet described."}</p></section>
           <section class="review-block"><h3>Manners</h3><p>${escapeHtml(character.manners) || "Not yet described."}</p></section>
-          <section class="review-block"><h3>Professional skills</h3>${chosenProfessionalSkills().length ? `<ul>${chosenProfessionalSkills().map(skill => `<li>${skill.name}</li>`).join("")}</ul>` : "<p>None chosen.</p>"}</section>
+          <section class="review-block"><h3>Professional skills</h3>${chosenNonMagicProfessionalSkills().length ? `<ul>${chosenNonMagicProfessionalSkills().map(skill => `<li>${skill.name}</li>`).join("")}</ul>` : "<p>None chosen.</p>"}</section>
         </div>
         <div>
           <section class="review-block"><h3>Perks</h3>${perks.length ? `<ul>${perks.map(({ skill, perk }) => `<li><strong>${perk.name}</strong> <em>(${skill.name})</em>. ${perk.description}</li>`).join("")}</ul>` : "<p>No perks chosen.</p>"}</section>
@@ -602,8 +664,9 @@ function renderReview() {
         </div>
         ${renderReviewSkillGroup("Core skills", GAME.fixedSkills)}
         ${renderReviewSkillGroup("Combat skills", GAME.combatSkills)}
+        ${renderReviewSkillGroup("Magic skills", reviewMagicSkills())}
         ${renderReviewSkillGroup("Standard skills", GAME.standardSkills)}
-        ${renderReviewSkillGroup("Professional skills", chosenProfessionalSkills())}
+        ${renderReviewSkillGroup("Professional skills", chosenNonMagicProfessionalSkills())}
       </section>
     </div>`;
 }
@@ -631,10 +694,18 @@ function bindStepEvents() {
   document.querySelectorAll("[data-ancestry]").forEach(button => button.addEventListener("click", () => {
     const ancestry = findById(GAME.ancestries, button.dataset.ancestry);
     if (ancestry?.available) {
+      if (character.ancestry !== ancestry.id) character.birthPerk = "";
       character.ancestry = ancestry.id;
       saveCharacter();
       render();
     }
+  }));
+  document.querySelectorAll("[data-birth-perk]").forEach(button => button.addEventListener("click", () => {
+    character.birthPerk = button.dataset.birthPerk;
+    character.professionalSkills = normalizeProfessionalSelection(character.professionalSkills, character.professionalSpecializations);
+    character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
+    saveCharacter();
+    render();
   }));
   document.querySelectorAll("[data-professional-skill]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.professionalSkill;
@@ -761,6 +832,7 @@ function moveSkill(skillId, direction) {
 
 function renderPreview() {
   const ancestry = findById(GAME.ancestries, character.ancestry);
+  const birthPerk = selectedBirthPerk();
   const perks = unlockedPerkSkills().map(skill => resolvedPerkForSkill(skill)).filter(Boolean);
   const bestSkills = [...GAME.fixedSkills, ...normalizeSkillOrder().map(id => findById(allSelectedSkills(), id)).filter(Boolean)]
     .sort((a, b) => skillValue(b.id) - skillValue(a.id))
@@ -773,6 +845,7 @@ function renderPreview() {
     <section class="preview-section"><h4>Player</h4><p class="${character.playerName ? "" : "empty-note"}">${escapeHtml(character.playerName) || "Not yet listed"}</p></section>
     <section class="preview-section"><h4>Details</h4><p>${[character.gender, character.age, character.height, character.weight].filter(Boolean).map(escapeHtml).join(" · ") || `<span class="empty-note">No details yet</span>`}</p></section>
     <section class="preview-section"><h4>Ancestry</h4><p class="${ancestry ? "" : "empty-note"}">${ancestry?.name || "Not yet chosen"}</p></section>
+    <section class="preview-section"><h4>Birth perk</h4><p class="${birthPerk ? "" : "empty-note"}">${birthPerk ? `${birthPerk.name}: ${birthPerk.effect}` : "Not yet chosen"}</p></section>
     <section class="preview-section"><h4>Professional skills · ${character.professionalSkills.length}/${GAME.professionalSkillChoices}</h4>${chosenProfessionalSkills().length ? `<ul>${chosenProfessionalSkills().map(skill => `<li>${skill.name}</li>`).join("")}</ul>` : `<p class="empty-note">No professional skills chosen</p>`}</section>
     <section class="preview-section"><h4>Best skills</h4>${bestSkills.length ? `<ul>${bestSkills.map(skill => `<li>${skill.name} ${skillValue(skill.id)}</li>`).join("")}</ul>` : `<p class="empty-note">No priority assigned</p>`}</section>
     <section class="preview-section"><h4>Perks</h4>${perks.length ? `<ul>${perks.map(perk => `<li>${perk.name}</li>`).join("")}</ul>` : `<p class="empty-note">No perks chosen</p>`}</section>`;

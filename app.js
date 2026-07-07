@@ -535,12 +535,13 @@ function renderPrioritySkill(skillId, index, total) {
   if (!skill) return "";
   const isProfessional = character.professionalSkills.includes(skillId);
   const isCombat = GAME.combatSkills.some(item => item.id === skillId);
-  const rowClass = isProfessional ? "priority-professional-skill-row" : isCombat ? "priority-combat-skill-row" : "priority-skill-row";
+  const isMagic = GAME.magicSkills.some(item => item.id === skillId) || skill.magicTradition;
+  const rowClass = isMagic ? "priority-magic-skill-row" : isProfessional ? "priority-professional-skill-row" : isCombat ? "priority-combat-skill-row" : "priority-skill-row";
   return `<div class="${rowClass}" draggable="true" data-priority-skill="${skillId}">
     <span class="priority-handle" aria-hidden="true">⋮⋮</span>
     <div class="priority-skill-main">
       <strong>${index + 1}. ${skill.name}</strong>
-      <small>${isProfessional ? "Professional" : isCombat ? "Combat" : "Standard"} skill</small>
+      <small>${isMagic ? "Magic" : isProfessional ? "Professional" : isCombat ? "Combat" : "Standard"} skill</small>
     </div>
     <span class="priority-share">${SKILL_ARRAY[index] ?? 20}</span>
     <div class="priority-buttons">

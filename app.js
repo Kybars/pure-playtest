@@ -86,7 +86,7 @@ const GAME = {
 const STEPS = [
   { id: "identity", label: "Identity" },
   { id: "ancestry", label: "Ancestry" },
-  { id: "professionals", label: "Professionals" },
+  { id: "specialisation", label: "Specialisation" },
   { id: "skills", label: "Skill Order" },
   { id: "features", label: "Features" },
   { id: "review", label: "Review" }
@@ -96,12 +96,13 @@ const STORAGE_KEY = "ember-and-ink-character";
 
 const freshCharacter = () => ({
   name: "",
-  sex: "",
+  gender: "",
   concept: "",
   appearance: "",
   ancestry: "",
   professionalSkills: [],
   skillOrder: [],
+  skillOrderTouched: false,
   features: [],
   notes: ""
 });
@@ -118,6 +119,7 @@ function loadCharacter() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved) return freshCharacter();
     const migrated = { ...freshCharacter(), ...saved };
+    migrated.gender = saved.gender || saved.sex || "";
     migrated.professionalSkills = Array.isArray(saved.professionalSkills)
       ? saved.professionalSkills
       : Array.isArray(saved.selectedProfessionalSkills)
@@ -126,11 +128,8 @@ function loadCharacter() {
     migrated.professionalSkills = migrated.professionalSkills
       .filter(id => selectableProfessionalSkills().some(skill => skill.id === id))
       .slice(0, GAME.professionalSkillChoices);
-    migrated.skillOrder = Array.isArray(saved.skillOrder)
-      ? saved.skillOrder
-      : Array.isArray(saved.skillPriorityOrders?.[0])
-        ? saved.skillPriorityOrders[0]
-        : [];
+    migrated.skillOrderTouched = saved.skillOrderTouched === true;
+    migrated.skillOrder = Array.isArray(saved.skillOrder) && migrated.skillOrderTouched ? saved.skillOrder : [];
     migrated.skillOrder = normalizeSkillOrder(migrated.skillOrder, migrated.professionalSkills);
     return migrated;
   } catch {
@@ -167,7 +166,8 @@ function allSelectedSkills(professionalIds = character.professionalSkills) {
   const selectedProfessionals = professionalIds
     .map(id => findById(selectableProfessionalSkills(), id))
     .filter(Boolean);
-  return [...GAME.combatSkills, ...GAME.standardSkills, ...selectedProfessionals];
+  return [...GAME.combatSkills, ...GAME.standardSkills, ...selectedProfessionals]
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function allSkillDefinitions() {
@@ -204,7 +204,7 @@ function spentFeaturePoints() {
 
 function completionChecks() {
   return [
-    !!character.name.trim() && !!character.sex && !!character.concept.trim(),
+    !!character.name.trim() && !!character.gender && !!character.concept.trim(),
     !!character.ancestry,
     character.professionalSkills.length === GAME.professionalSkillChoices,
     skillOrderComplete(),
@@ -220,9 +220,7 @@ function skillOrderComplete() {
 }
 
 function canAccessStep(index) {
-  if (index <= currentStep) return true;
-  const checks = completionChecks();
-  return checks.slice(0, index).every(Boolean);
+  return index >= 0 && index < STEPS.length;
 }
 
 function updateProgress() {
@@ -239,7 +237,7 @@ function updateProgress() {
           : "Put your skills in priority order."
         : `Choose ${GAME.professionalSkillChoices} professional skills.`
       : "Choose an ancestry."
-    : "Start with a name, sex, and concept.";
+    : "Start with any identity details you know.";
 }
 
 function render() {
@@ -258,8 +256,7 @@ function renderStepNav() {
   el("stepNav").innerHTML = STEPS.map((step, index) => {
     const active = index === currentStep;
     const complete = completionChecks()[index];
-    const locked = !canAccessStep(index);
-    return `<button class="step-link ${active ? "active" : ""} ${complete ? "complete" : ""}" data-step="${index}" ${locked ? "disabled" : ""}>
+    return `<button class="step-link ${active ? "active" : ""} ${complete ? "complete" : ""}" data-step="${index}">
       <span class="number">${index + 1}</span><strong>${step.label}</strong>
     </button>`;
   }).join("");
@@ -284,9 +281,9 @@ function renderIdentity() {
       <div class="field"><label>Character name</label><input data-field="name" value="${escapeHtml(character.name)}" placeholder="Maera of the Low Road"></div>
       <div class="field"><label>Concept</label><input data-field="concept" value="${escapeHtml(character.concept)}" placeholder="Disgraced cartographer, oathbound duelist..."></div>
     </div>
-    <div class="field"><label>Sex</label>
+    <div class="field"><label>Gender</label>
       <div class="segmented-choice">
-        ${["Male", "Female"].map(option => `<button type="button" class="${character.sex === option ? "selected" : ""}" data-sex-choice="${option}">${option}</button>`).join("")}
+        ${["Male", "Female"].map(option => `<button type="button" class="${character.gender === option ? "selected" : ""}" data-gender-choice="${option}">${option}</button>`).join("")}
       </div>
     </div>
     <div class="field"><label>Appearance & manner</label>
@@ -309,9 +306,9 @@ function renderProfessionalChoice() {
       + `<div class="locked-panel"><strong>Professional choices are locked</strong><p>Return to Ancestry and choose Human to continue.</p></div>`;
   }
   const remaining = GAME.professionalSkillChoices - character.professionalSkills.length;
-  return heading("Professional focus", `Choose ${GAME.professionalSkillChoices} professional skills.`, "These are the specialized skills your character brings into play. Pick exactly seven; the rest of the skill list is fixed.") + `
+  return heading("Specialisation", `Choose ${GAME.professionalSkillChoices} professional skills.`, "These are the specialised skills your character brings into play. Pick exactly seven; the rest of the skill list is fixed.") + `
     <div class="budget-strip ${remaining < 0 ? "over" : ""}">
-      <span>Professional skills selected</span>
+      <span>Specialisations selected</span>
       <strong>${character.professionalSkills.length} / ${GAME.professionalSkillChoices}</strong>
     </div>
     <div class="choice-grid professional-choice-grid">${selectableProfessionalSkills().map(skill => {
@@ -385,7 +382,7 @@ function renderReview() {
   return heading("The road awaits", "Review your character.", "Everything below will become your print-ready character sheet. Use your browser’s PDF option when exporting.") + `
     <div class="review-sheet">
       <h2>${escapeHtml(character.name) || "Unnamed Wanderer"}</h2>
-      <p class="review-meta">${escapeHtml(character.sex)}${character.sex && character.concept ? " · " : ""}${escapeHtml(character.concept) || "No concept yet"}</p>
+      <p class="review-meta">${escapeHtml(character.gender)}${character.gender && character.concept ? " · " : ""}${escapeHtml(character.concept) || "No concept yet"}</p>
       <div class="review-columns">
         <div>
           <section class="review-block"><h3>Ancestry</h3><p><strong>${ancestry?.name || "Not chosen"}</strong><br>${ancestry?.description || ""}</p></section>
@@ -424,8 +421,8 @@ function bindStepEvents() {
     character[event.target.dataset.field] = event.target.value;
     saveCharacter();
   }));
-  document.querySelectorAll("[data-sex-choice]").forEach(button => button.addEventListener("click", () => {
-    character.sex = button.dataset.sexChoice;
+  document.querySelectorAll("[data-gender-choice]").forEach(button => button.addEventListener("click", () => {
+    character.gender = button.dataset.genderChoice;
     saveCharacter();
     render();
   }));
@@ -492,6 +489,7 @@ function reorderSkill(draggedId, targetId) {
   const [moved] = order.splice(fromIndex, 1);
   order.splice(toIndex, 0, moved);
   character.skillOrder = order;
+  character.skillOrderTouched = true;
 }
 
 function moveSkill(skillId, direction) {
@@ -501,6 +499,7 @@ function moveSkill(skillId, direction) {
   if (index < 0 || nextIndex < 0 || nextIndex >= order.length) return;
   [order[index], order[nextIndex]] = [order[nextIndex], order[index]];
   character.skillOrder = order;
+  character.skillOrderTouched = true;
 }
 
 function renderPreview() {
@@ -534,19 +533,7 @@ el("backButton").addEventListener("click", () => {
 });
 
 el("nextButton").addEventListener("click", () => {
-  if (currentStep === 0 && (!character.name.trim() || !character.sex || !character.concept.trim())) {
-    showToast("Add a name, sex, and concept before continuing.");
-    return;
-  }
-  if (currentStep === 1 && !character.ancestry) {
-    showToast("Choose an ancestry before continuing.");
-    return;
-  }
-  if (currentStep === 2 && character.professionalSkills.length !== GAME.professionalSkillChoices) {
-    showToast(`Choose exactly ${GAME.professionalSkillChoices} professional skills.`);
-    return;
-  }
-  if (currentStep < STEPS.length - 1 && canAccessStep(currentStep + 1)) {
+  if (currentStep < STEPS.length - 1) {
     currentStep++;
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });

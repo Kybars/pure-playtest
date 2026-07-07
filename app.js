@@ -208,7 +208,13 @@ function saveCharacter() {
 
 function selectableProfessionalSkills() {
   const tradition = activeMagicTradition();
-  return GAME.professionalSkills.filter(skill => !skill.magicTradition || skill.magicTradition === tradition);
+  return GAME.professionalSkills
+    .filter(skill => !skill.magicTradition || skill.magicTradition === tradition)
+    .sort(bySkillName);
+}
+
+function bySkillName(a, b) {
+  return a.name.localeCompare(b.name);
 }
 
 function selectedBirthPerk() {
@@ -284,7 +290,8 @@ function professionalSkillFromKey(key, specializations = character.professionalS
 function chosenProfessionalSkills() {
   return character.professionalSkills
     .map(key => professionalSkillFromKey(key, character.professionalSpecializations))
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort(bySkillName);
 }
 
 function chosenMagicProfessionalSkills() {
@@ -296,15 +303,16 @@ function chosenNonMagicProfessionalSkills() {
 }
 
 function reviewMagicSkills() {
-  return [...activeMagicSkills(), ...chosenMagicProfessionalSkills()];
+  return [...activeMagicSkills(), ...chosenMagicProfessionalSkills()].sort(bySkillName);
 }
 
 function allSelectedSkills(professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
   const selectedProfessionals = professionalIds
     .map(id => professionalSkillFromKey(id, specializations))
-    .filter(Boolean);
-  return [...GAME.combatSkills, ...activeMagicSkills(), ...GAME.standardSkills, ...selectedProfessionals]
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .filter(Boolean)
+    .sort(bySkillName);
+  const generalSkills = [...GAME.combatSkills, ...activeMagicSkills(), ...GAME.standardSkills].sort(bySkillName);
+  return [...selectedProfessionals, ...generalSkills];
 }
 
 function allSkillDefinitions() {
@@ -313,13 +321,26 @@ function allSkillDefinitions() {
 
 function normalizeSkillOrder(order = character.skillOrder, professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
   const available = allSelectedSkills(professionalIds, specializations).map(skill => skill.id);
+  const professionalSet = new Set(professionalIds);
   const seen = new Set();
   const cleaned = order.filter(id => {
     if (!available.includes(id) || seen.has(id)) return false;
     seen.add(id);
     return true;
   });
-  return [...cleaned, ...available.filter(id => !seen.has(id))];
+  const missing = available.filter(id => !seen.has(id));
+  if (!character.skillOrderTouched) {
+    return [
+      ...available.filter(id => professionalSet.has(id)),
+      ...available.filter(id => !professionalSet.has(id))
+    ];
+  }
+  return [
+    ...cleaned.filter(id => professionalSet.has(id)),
+    ...missing.filter(id => professionalSet.has(id)),
+    ...cleaned.filter(id => !professionalSet.has(id)),
+    ...missing.filter(id => !professionalSet.has(id))
+  ];
 }
 
 function skillName(id) {
@@ -546,7 +567,6 @@ function renderPrioritySkill(skillId, index, total) {
     <span class="priority-share">${SKILL_ARRAY[index] ?? 20}</span>
     <div class="priority-buttons">
       <button type="button" data-move-skill="${skillId}" data-move-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button>
-      <button type="button" data-move-skill="${skillId}" data-move-direction="1" ${index === total - 1 ? "disabled" : ""}>↓</button>
     </div>
   </div>`;
 }
@@ -675,10 +695,11 @@ function renderReview() {
 }
 
 function renderReviewSkillGroup(title, skills) {
+  const sortedSkills = [...skills].sort(bySkillName);
   return `<div class="review-skill-group">
     <h4>${title}</h4>
-    <div class="review-skill-list">${skills.length
-      ? skills.map(skill => `<span class="${skillValue(skill.id) > 20 ? "trained" : ""}"><i>${skill.name}</i><strong>${skillValue(skill.id)}</strong></span>`).join("")
+    <div class="review-skill-list">${sortedSkills.length
+      ? sortedSkills.map(skill => `<span class="${skillValue(skill.id) > 20 ? "trained" : ""}"><i>${skill.name}</i><strong>${skillValue(skill.id)}</strong></span>`).join("")
       : `<em>None chosen.</em>`}
     </div>
   </div>`;

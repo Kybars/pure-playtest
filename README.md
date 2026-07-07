@@ -22,6 +22,7 @@ Edit the `GAME` object at the top of `app.js` to replace:
 - combat, standard, and professional skill lists
 - fixed core skills that start at 60 and stay outside the priority order
 - the number of professional skills each character chooses
+- repeatable professional skill families with named specialisations and custom entries
 - the priority-array values used to assign final skill ratings
 - skill-linked perks that unlock when skills reach 50+
 - hidden future professional skills such as Combat Magic

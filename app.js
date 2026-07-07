@@ -49,24 +49,24 @@ const GAME = {
   professionalSkills: [
     { id: "engineering", name: "Engineering" },
     { id: "instruction", name: "Instruction" },
-    { id: "language-any", name: "Language (any)" },
+    { id: "language-any", name: "Language (any)", repeatable: true, specializations: ["Dwarven", "Orc", "Elven", "Goblin", "Imperial", "Old Kingdom"] },
     { id: "literacy", name: "Literacy" },
-    { id: "lore-any", name: "Lore (any)" },
+    { id: "lore-any", name: "Lore (any)", repeatable: true, specializations: ["History", "Geography", "Nobility", "Monsters", "Magic", "Heraldry"] },
     { id: "mechanisms", name: "Mechanisms" },
     { id: "oratory", name: "Oratory" },
     { id: "research", name: "Research" },
-    { id: "theology-any", name: "Theology (any)" },
+    { id: "theology-any", name: "Theology (any)", repeatable: true, specializations: ["Local Cults", "Old Gods", "Temple Doctrine", "Heresies", "Spirits", "Funerary Rites"] },
     { id: "courtesy", name: "Courtesy" },
     { id: "appraisal", name: "Appraisal" },
     { id: "alchemy", name: "Alchemy" },
-    { id: "art-any", name: "Art (any)" },
+    { id: "art-any", name: "Art (any)", repeatable: true, specializations: ["Painting", "Sculpture", "Calligraphy", "Music", "Poetry", "Dance"] },
     { id: "bureaucracy", name: "Bureaucracy" },
     { id: "commerce", name: "Commerce" },
-    { id: "craft-any", name: "Craft (any)" },
-    { id: "profession-any", name: "Profession (any)" },
+    { id: "craft-any", name: "Craft (any)", repeatable: true, specializations: ["Blacksmith", "Carpenter", "Mason", "Tailor", "Cook", "Jeweller"] },
+    { id: "profession-any", name: "Profession (any)", repeatable: true, specializations: ["Miner", "Sailor", "Merchant", "Scribe", "Farmer", "Servant"] },
     { id: "surgery", name: "Surgery" },
     { id: "animal-handling", name: "Animal Handling" },
-    { id: "animal-training-any", name: "Animal Training (any)" },
+    { id: "animal-training-any", name: "Animal Training (any)", repeatable: true, specializations: ["Dogs", "Horses", "Birds", "Livestock", "Exotic Beasts", "War Animals"] },
     { id: "navigation", name: "Navigation" },
     { id: "seamanship", name: "Seamanship" },
     { id: "survival", name: "Survival" },
@@ -132,6 +132,7 @@ const freshCharacter = () => ({
   appearance: "",
   ancestry: "",
   professionalSkills: [],
+  professionalSpecializations: {},
   skillOrder: [],
   skillOrderTouched: false,
   perks: {},
@@ -151,17 +152,16 @@ function loadCharacter() {
     if (!saved) return freshCharacter();
     const migrated = { ...freshCharacter(), ...saved };
     migrated.gender = saved.gender || saved.sex || "";
+    migrated.professionalSpecializations = typeof saved.professionalSpecializations === "object" && saved.professionalSpecializations ? saved.professionalSpecializations : {};
     migrated.professionalSkills = Array.isArray(saved.professionalSkills)
       ? saved.professionalSkills
       : Array.isArray(saved.selectedProfessionalSkills)
         ? saved.selectedProfessionalSkills
         : [];
-    migrated.professionalSkills = migrated.professionalSkills
-      .filter(id => selectableProfessionalSkills().some(skill => skill.id === id))
-      .slice(0, GAME.professionalSkillChoices);
+    migrated.professionalSkills = normalizeProfessionalSelection(migrated.professionalSkills, migrated.professionalSpecializations);
     migrated.skillOrderTouched = saved.skillOrderTouched === true;
     migrated.skillOrder = Array.isArray(saved.skillOrder) && migrated.skillOrderTouched ? saved.skillOrder : [];
-    migrated.skillOrder = normalizeSkillOrder(migrated.skillOrder, migrated.professionalSkills);
+    migrated.skillOrder = normalizeSkillOrder(migrated.skillOrder, migrated.professionalSkills, migrated.professionalSpecializations);
     migrated.perks = typeof saved.perks === "object" && saved.perks ? saved.perks : {};
     return migrated;
   } catch {
@@ -170,10 +170,8 @@ function loadCharacter() {
 }
 
 function saveCharacter() {
-  character.professionalSkills = character.professionalSkills
-    .filter(id => selectableProfessionalSkills().some(skill => skill.id === id))
-    .slice(0, GAME.professionalSkillChoices);
-  character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills);
+  character.professionalSkills = normalizeProfessionalSelection(character.professionalSkills, character.professionalSpecializations);
+  character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
   pruneLockedPerks();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(character));
   const status = el("saveStatus");
@@ -189,26 +187,83 @@ function selectableProfessionalSkills() {
   return GAME.professionalSkills.filter(skill => !skill.hidden);
 }
 
+function professionalBaseId(key) {
+  return String(key).split("::")[0];
+}
+
+function professionalSpecializationKey(baseId, specialization) {
+  return `${baseId}::${slugify(specialization)}`;
+}
+
+function slugify(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
+}
+
+function displayProfessionalName(skill, specialization = "") {
+  if (!skill.repeatable) return skill.name;
+  const baseName = skill.name.replace(/\s*\(any\)\s*$/i, "");
+  return specialization ? `${baseName} (${specialization})` : skill.name;
+}
+
+function normalizeProfessionalSelection(selection = [], specializations = character.professionalSpecializations || {}) {
+  const selectable = selectableProfessionalSkills();
+  const normalized = [];
+  for (const rawKey of selection) {
+    const baseId = professionalBaseId(rawKey);
+    const base = findById(selectable, baseId);
+    if (!base) continue;
+    let key = rawKey;
+    if (base.repeatable) {
+      let specialization = specializations[key] || specializations[baseId] || base.specializations?.[0] || "Custom";
+      key = key.includes("::") ? key : professionalSpecializationKey(baseId, specialization);
+      specializations[key] = specialization;
+    } else {
+      key = baseId;
+    }
+    if (!normalized.includes(key)) normalized.push(key);
+    if (normalized.length >= GAME.professionalSkillChoices) break;
+  }
+  Object.keys(specializations).forEach(key => {
+    if (!normalized.includes(key)) delete specializations[key];
+  });
+  return normalized;
+}
+
+function professionalSkillFromKey(key, specializations = character.professionalSpecializations) {
+  const baseId = professionalBaseId(key);
+  const base = findById(selectableProfessionalSkills(), baseId);
+  if (!base) return null;
+  const specialization = base.repeatable ? specializations?.[key] || "" : "";
+  return {
+    ...base,
+    id: key,
+    baseId,
+    baseName: base.name,
+    specialization,
+    name: displayProfessionalName(base, specialization)
+  };
+}
+
 function chosenProfessionalSkills() {
   return character.professionalSkills
-    .map(id => findById(selectableProfessionalSkills(), id))
+    .map(key => professionalSkillFromKey(key, character.professionalSpecializations))
     .filter(Boolean);
 }
 
-function allSelectedSkills(professionalIds = character.professionalSkills) {
+function allSelectedSkills(professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
   const selectedProfessionals = professionalIds
-    .map(id => findById(selectableProfessionalSkills(), id))
+    .map(id => professionalSkillFromKey(id, specializations))
     .filter(Boolean);
   return [...GAME.combatSkills, ...GAME.standardSkills, ...selectedProfessionals]
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function allSkillDefinitions() {
-  return [...GAME.fixedSkills, ...GAME.combatSkills, ...GAME.standardSkills, ...GAME.professionalSkills];
+  return [...GAME.fixedSkills, ...GAME.combatSkills, ...GAME.standardSkills, ...GAME.professionalSkills, ...chosenProfessionalSkills()];
 }
 
-function normalizeSkillOrder(order = character.skillOrder, professionalIds = character.professionalSkills) {
-  const available = allSelectedSkills(professionalIds).map(skill => skill.id);
+function normalizeSkillOrder(order = character.skillOrder, professionalIds = character.professionalSkills, specializations = character.professionalSpecializations) {
+  const available = allSelectedSkills(professionalIds, specializations).map(skill => skill.id);
   const seen = new Set();
   const cleaned = order.filter(id => {
     if (!available.includes(id) || seen.has(id)) return false;
@@ -345,6 +400,7 @@ function renderProfessionalChoice() {
       <strong>${character.professionalSkills.length} / ${GAME.professionalSkillChoices}</strong>
     </div>
     <div class="choice-grid professional-choice-grid">${selectableProfessionalSkills().map(skill => {
+      if (skill.repeatable) return renderRepeatableProfessionalChoice(skill);
       const selected = character.professionalSkills.includes(skill.id);
       const locked = !selected && character.professionalSkills.length >= GAME.professionalSkillChoices;
       return `<button class="choice-card ${selected ? "selected" : ""}" data-professional-skill="${skill.id}" ${locked ? "disabled" : ""}>
@@ -354,9 +410,28 @@ function renderProfessionalChoice() {
     }).join("")}</div>`;
 }
 
+function renderRepeatableProfessionalChoice(skill) {
+  const selected = chosenProfessionalSkills().filter(item => item.baseId === skill.id);
+  const limitReached = character.professionalSkills.length >= GAME.professionalSkillChoices;
+  return `<article class="choice-card repeatable-skill-card ${selected.length ? "selected" : ""}">
+    <div><h3>${skill.name}</h3><p>Can be chosen multiple times. Each choice needs its own specialisation.</p></div>
+    ${selected.length ? `<div class="selected-specialisations">${selected.map(item => `
+      <span>${item.specialization}<button type="button" data-remove-professional="${item.id}" aria-label="Remove ${escapeHtml(item.name)}">×</button></span>`).join("")}</div>` : ""}
+    <div class="specialisation-options">${(skill.specializations || []).map(option => {
+      const key = professionalSpecializationKey(skill.id, option);
+      const picked = character.professionalSkills.includes(key);
+      return `<button type="button" class="${picked ? "selected" : ""}" data-repeat-professional="${skill.id}" data-repeat-specialization="${escapeHtml(option)}" ${picked || limitReached ? "disabled" : ""}>${option}</button>`;
+    }).join("")}</div>
+    <div class="custom-specialisation-row">
+      <input data-custom-repeat-input="${skill.id}" placeholder="Custom ${skill.name.replace(/\s*\(any\)\s*$/i, "").toLowerCase()}">
+      <button type="button" class="button ghost" data-add-custom-repeat="${skill.id}" ${limitReached ? "disabled" : ""}>Add custom</button>
+    </div>
+  </article>`;
+}
+
 function renderSkills() {
   if (character.professionalSkills.length !== GAME.professionalSkillChoices) {
-    return heading("Professional skills required", "Choose your seven professional skills first.", "Once those are set, you will rank the complete 32-skill list from strongest to weakest.");
+    return heading("Professional skills required", "Choose your seven professional skills first.", "Once those are set, you will rank the complete orderable skill list from strongest to weakest.");
   }
   const order = normalizeSkillOrder();
   const topValue = SKILL_ARRAY[0];
@@ -542,7 +617,32 @@ function bindStepEvents() {
     } else if (character.professionalSkills.length < GAME.professionalSkillChoices) {
       character.professionalSkills.push(id);
     }
-    character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills);
+    character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
+    saveCharacter();
+    render();
+  }));
+  document.querySelectorAll("[data-repeat-professional]").forEach(button => button.addEventListener("click", () => {
+    addRepeatableProfessional(button.dataset.repeatProfessional, button.dataset.repeatSpecialization);
+    saveCharacter();
+    render();
+  }));
+  document.querySelectorAll("[data-add-custom-repeat]").forEach(button => button.addEventListener("click", () => {
+    const baseId = button.dataset.addCustomRepeat;
+    const input = document.querySelector(`[data-custom-repeat-input="${baseId}"]`);
+    const specialization = input?.value?.trim();
+    if (!specialization) {
+      showToast("Name the specialisation first.");
+      return;
+    }
+    addRepeatableProfessional(baseId, specialization);
+    saveCharacter();
+    render();
+  }));
+  document.querySelectorAll("[data-remove-professional]").forEach(button => button.addEventListener("click", () => {
+    const key = button.dataset.removeProfessional;
+    character.professionalSkills = character.professionalSkills.filter(skillId => skillId !== key);
+    delete character.professionalSpecializations[key];
+    character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
     saveCharacter();
     render();
   }));
@@ -593,6 +693,23 @@ function bindStepEvents() {
     character.perks[skillId] = { type: "custom", name: current.name || "", description: current.description || "", [key]: input.value };
     saveCharacter();
   }));
+}
+
+function addRepeatableProfessional(baseId, specialization) {
+  if (character.professionalSkills.length >= GAME.professionalSkillChoices) return;
+  const base = findById(selectableProfessionalSkills(), baseId);
+  if (!base?.repeatable) return;
+  const label = String(specialization || "").trim();
+  if (!label) return;
+  let key = professionalSpecializationKey(baseId, label);
+  let suffix = 2;
+  while (character.professionalSkills.includes(key) && character.professionalSpecializations[key] !== label) {
+    key = `${professionalSpecializationKey(baseId, label)}-${suffix++}`;
+  }
+  if (character.professionalSkills.includes(key)) return;
+  character.professionalSpecializations[key] = label;
+  character.professionalSkills.push(key);
+  character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
 }
 
 function reorderSkill(draggedId, targetId) {

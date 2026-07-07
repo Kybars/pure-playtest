@@ -259,8 +259,8 @@ function renderStepNav() {
     const active = index === currentStep;
     const complete = completionChecks()[index];
     const locked = !canAccessStep(index);
-    return `<button class="${active ? "active" : ""} ${complete ? "complete" : ""}" data-step="${index}" ${locked ? "disabled" : ""}>
-      <span>${index + 1}</span><strong>${step.label}</strong>
+    return `<button class="step-link ${active ? "active" : ""} ${complete ? "complete" : ""}" data-step="${index}" ${locked ? "disabled" : ""}>
+      <span class="number">${index + 1}</span><strong>${step.label}</strong>
     </button>`;
   }).join("");
   document.querySelectorAll("[data-step]").forEach(button => {
@@ -280,22 +280,24 @@ function heading(kicker, title, copy) {
 
 function renderIdentity() {
   return heading("Who are they?", "Start with a person, not a stat block.", "Give the table enough texture to picture your character before the numbers settle into place.") + `
-    <div class="form-grid">
-      <label>Character name<input data-field="name" value="${escapeHtml(character.name)}" placeholder="Maera of the Low Road"></label>
-      <label>Concept<input data-field="concept" value="${escapeHtml(character.concept)}" placeholder="Disgraced cartographer, oathbound duelist..."></label>
+    <div class="field-row">
+      <div class="field"><label>Character name</label><input data-field="name" value="${escapeHtml(character.name)}" placeholder="Maera of the Low Road"></div>
+      <div class="field"><label>Concept</label><input data-field="concept" value="${escapeHtml(character.concept)}" placeholder="Disgraced cartographer, oathbound duelist..."></div>
     </div>
-    <div class="choice-row">
-      ${["Male", "Female"].map(option => `<button class="choice-pill ${character.sex === option ? "selected" : ""}" data-sex-choice="${option}">${option}</button>`).join("")}
+    <div class="field"><label>Sex</label>
+      <div class="segmented-choice">
+        ${["Male", "Female"].map(option => `<button type="button" class="${character.sex === option ? "selected" : ""}" data-sex-choice="${option}">${option}</button>`).join("")}
+      </div>
     </div>
-    <label class="wide-label">Appearance & manner
+    <div class="field"><label>Appearance & manner</label>
       <textarea data-field="appearance" placeholder="Clothes, scars, presence, voice...">${escapeHtml(character.appearance)}</textarea>
-    </label>`;
+    </div>`;
 }
 
 function renderAncestry() {
   return heading("Blood and belonging", "Choose ancestry.", "Only humans are available in this playtest, but the sheet is ready for more ancestries later.") + `
     <div class="choice-grid">${GAME.ancestries.map(ancestry => `
-      <button class="choice-card ${character.ancestry === ancestry.id ? "selected" : ""} ${!ancestry.available ? "disabled" : ""}" data-ancestry="${ancestry.id}" ${!ancestry.available ? "disabled" : ""}>
+      <button class="choice-card ${character.ancestry === ancestry.id ? "selected" : ""} ${!ancestry.available ? "unavailable" : ""}" data-ancestry="${ancestry.id}" ${!ancestry.available ? "disabled" : ""}>
         <div><h3>${ancestry.name}</h3><p>${ancestry.description}</p></div>
         <small>${ancestry.benefit}</small>
       </button>`).join("")}</div>`;
@@ -532,6 +534,10 @@ el("backButton").addEventListener("click", () => {
 });
 
 el("nextButton").addEventListener("click", () => {
+  if (currentStep === 0 && (!character.name.trim() || !character.sex || !character.concept.trim())) {
+    showToast("Add a name, sex, and concept before continuing.");
+    return;
+  }
   if (currentStep === 1 && !character.ancestry) {
     showToast("Choose an ancestry before continuing.");
     return;

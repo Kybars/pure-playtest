@@ -774,7 +774,7 @@ function renderPreview() {
     <section class="preview-section"><h4>Details</h4><p>${[character.gender, character.age, character.height, character.weight].filter(Boolean).map(escapeHtml).join(" · ") || `<span class="empty-note">No details yet</span>`}</p></section>
     <section class="preview-section"><h4>Ancestry</h4><p class="${ancestry ? "" : "empty-note"}">${ancestry?.name || "Not yet chosen"}</p></section>
     <section class="preview-section"><h4>Professional skills · ${character.professionalSkills.length}/${GAME.professionalSkillChoices}</h4>${chosenProfessionalSkills().length ? `<ul>${chosenProfessionalSkills().map(skill => `<li>${skill.name}</li>`).join("")}</ul>` : `<p class="empty-note">No professional skills chosen</p>`}</section>
-    <section class="preview-section"><h4>Best skills</h4>${bestSkills.length ? `<ul>${bestSkills.map((skill, index) => `<li>${skill.name} ${SKILL_ARRAY[index] ?? 20}</li>`).join("")}</ul>` : `<p class="empty-note">No priority assigned</p>`}</section>
+    <section class="preview-section"><h4>Best skills</h4>${bestSkills.length ? `<ul>${bestSkills.map(skill => `<li>${skill.name} ${skillValue(skill.id)}</li>`).join("")}</ul>` : `<p class="empty-note">No priority assigned</p>`}</section>
     <section class="preview-section"><h4>Perks</h4>${perks.length ? `<ul>${perks.map(perk => `<li>${perk.name}</li>`).join("")}</ul>` : `<p class="empty-note">No perks chosen</p>`}</section>`;
 }
 

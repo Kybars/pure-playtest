@@ -210,15 +210,6 @@ input:focus, textarea:focus { border-color: var(--rust); box-shadow: 0 0 0 3px r
 .skill-mode-toggle .segmented-choice { min-width: 280px; }
 .priority-summary { margin: -4px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .priority-skill-list { display: grid; gap: 8px; }
-.array-preview {
-  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; margin: -8px 0 22px;
-}
-.array-preview span {
-  display: flex; align-items: center; justify-content: space-between; gap: 5px;
-  padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.58);
-  font: 700 12px "Newsreader", serif;
-}
-.array-preview i { color: var(--muted); font: 700 7px "DM Sans", sans-serif; text-transform: uppercase; }
 .priority-order-panel { margin-top: 22px; }
 .priority-skill-row {
   display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px;

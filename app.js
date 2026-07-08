@@ -534,9 +534,6 @@ function renderSkills() {
     ? "All professional skills are included."
     : `${professionalCount} of ${GAME.professionalSkillChoices} professional skills chosen; add more from Specialisation when ready.`;
   return heading("Skill priority", "Put the available skill list in order.", `Rank the ${order.length} currently available skills. ${professionalNote} The top skill is ${topValue}; the values step down through the array, and any extra skills beyond the array stay at 20.`) + `
-    <div class="array-preview">
-      ${SKILL_ARRAY.map((value, index) => `<span><i>${index + 1}</i>${value}</span>`).join("")}
-    </div>
     <div class="budget-strip">
       <span>Current range</span>
       <strong>${topValue} to ${bottomValue}</strong>

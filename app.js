@@ -38,7 +38,7 @@ const GAME = {
     { id: "language-common", name: "Language (Common Tongue)", value: 60 }
   ],
   combatSkills: [
-    { id: "brawling", name: "Brawling" },
+    { id: "brawling", name: "Unarmed Combat" },
     { id: "melee-combat", name: "Melee Combat" },
     { id: "ranged-combat", name: "Ranged Combat" },
     { id: "physical-defense", name: "Physical Defense" },
@@ -526,19 +526,23 @@ function renderRepeatableProfessionalChoice(skill) {
 }
 
 function renderSkills() {
-  if (character.professionalSkills.length !== GAME.professionalSkillChoices) {
-    return heading("Professional skills required", "Choose your seven professional skills first.", "Once those are set, you will rank the complete orderable skill list from strongest to weakest.");
-  }
   const order = normalizeSkillOrder();
   const topValue = SKILL_ARRAY[0];
   const bottomValue = SKILL_ARRAY[Math.min(order.length, SKILL_ARRAY.length) - 1] ?? 20;
-  return heading("Skill priority", "Put the full skill list in order.", `Rank all ${order.length} skills. The top skill is ${topValue}; the values step down through the array, and any extra skills beyond the array stay at 20.`) + `
+  const professionalCount = character.professionalSkills.length;
+  const professionalNote = professionalCount === GAME.professionalSkillChoices
+    ? "All professional skills are included."
+    : `${professionalCount} of ${GAME.professionalSkillChoices} professional skills chosen; add more from Specialisation when ready.`;
+  return heading("Skill priority", "Put the available skill list in order.", `Rank the ${order.length} currently available skills. ${professionalNote} The top skill is ${topValue}; the values step down through the array, and any extra skills beyond the array stay at 20.`) + `
+    <div class="array-preview">
+      ${SKILL_ARRAY.map((value, index) => `<span><i>${index + 1}</i>${value}</span>`).join("")}
+    </div>
     <div class="budget-strip">
       <span>Current range</span>
       <strong>${topValue} to ${bottomValue}</strong>
     </div>
     <section class="priority-order-panel">
-      <div class="path-heading"><span>Drag to reorder, or use the arrows</span><small>${chosenProfessionalSkills().length} professional skills included</small></div>
+      <div class="path-heading"><span>Drag to reorder, or use the arrows</span><small>${chosenProfessionalSkills().length} / ${GAME.professionalSkillChoices} professional skills included</small></div>
       <div class="priority-skill-list">${order.map((skillId, index) => renderPrioritySkill(skillId, index, order.length)).join("")}</div>
     </section>`;
 }
@@ -724,17 +728,23 @@ function bindStepEvents() {
   }));
   document.querySelectorAll("[data-professional-skill]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.professionalSkill;
+    const wasReordered = character.skillOrderTouched;
+    let added = false;
     if (character.professionalSkills.includes(id)) {
       character.professionalSkills = character.professionalSkills.filter(skillId => skillId !== id);
     } else if (character.professionalSkills.length < GAME.professionalSkillChoices) {
       character.professionalSkills.push(id);
+      added = true;
     }
     character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
+    if (added && wasReordered) putSkillOnTop(id);
     saveCharacter();
     render();
   }));
   document.querySelectorAll("[data-repeat-professional]").forEach(button => button.addEventListener("click", () => {
-    addRepeatableProfessional(button.dataset.repeatProfessional, button.dataset.repeatSpecialization);
+    const wasReordered = character.skillOrderTouched;
+    const addedKey = addRepeatableProfessional(button.dataset.repeatProfessional, button.dataset.repeatSpecialization);
+    if (addedKey && wasReordered) putSkillOnTop(addedKey);
     saveCharacter();
     render();
   }));
@@ -746,7 +756,9 @@ function bindStepEvents() {
       showToast("Name the specialisation first.");
       return;
     }
-    addRepeatableProfessional(baseId, specialization);
+    const wasReordered = character.skillOrderTouched;
+    const addedKey = addRepeatableProfessional(baseId, specialization);
+    if (addedKey && wasReordered) putSkillOnTop(addedKey);
     saveCharacter();
     render();
   }));
@@ -808,20 +820,27 @@ function bindStepEvents() {
 }
 
 function addRepeatableProfessional(baseId, specialization) {
-  if (character.professionalSkills.length >= GAME.professionalSkillChoices) return;
+  if (character.professionalSkills.length >= GAME.professionalSkillChoices) return null;
   const base = findById(selectableProfessionalSkills(), baseId);
-  if (!base?.repeatable) return;
+  if (!base?.repeatable) return null;
   const label = String(specialization || "").trim();
-  if (!label) return;
+  if (!label) return null;
   let key = professionalSpecializationKey(baseId, label);
   let suffix = 2;
   while (character.professionalSkills.includes(key) && character.professionalSpecializations[key] !== label) {
     key = `${professionalSpecializationKey(baseId, label)}-${suffix++}`;
   }
-  if (character.professionalSkills.includes(key)) return;
+  if (character.professionalSkills.includes(key)) return null;
   character.professionalSpecializations[key] = label;
   character.professionalSkills.push(key);
   character.skillOrder = normalizeSkillOrder(character.skillOrder, character.professionalSkills, character.professionalSpecializations);
+  return key;
+}
+
+function putSkillOnTop(skillId) {
+  const order = normalizeSkillOrder();
+  character.skillOrder = [skillId, ...order.filter(id => id !== skillId)];
+  character.skillOrderTouched = true;
 }
 
 function reorderSkill(draggedId, targetId) {
